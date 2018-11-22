@@ -15,7 +15,7 @@
 * 笔者设计了Ippotim语言的基本语法，并用Java实现了一个小巧的解释器以及桌面端和安卓端两个图形界面程序（算是IDE吧），还提供了一些简单的演示程序，说明文档《The Ippotim Programming Language》也正在编写中，后续会上传到Ippotim Docs项目中。
 * 顺便说一下，笔者为Ippotim语言设计了一个logo，用“ippotim”的7个字符拼成了汉字的“谧”字。
 ## What have you done for Ippotim?
-* I designed the basic syntax of Ippotim, implemented a small interpreter in Java, and two graphical interface programs (maybe IDE) on Desktop and Android, and provided some simple demos. The documentation, "The Ippotim Programming Language", is also in the works and will be shipped to The Ippotim Docs project.
+* I designed the basic syntax of Ippotim, implemented a small interpreter in Java, and two graphical interface programs (maybe IDE) on Desktop and Android, and provided some simple demos. The documentation, "The Ippotim Programming Language", is also in the works and will be shipped to Ippotim Docs project.
 * By the way, I designed a logo for Ippotim, using seven characters of "Ippotim" to show the Chinese character "谧".
 
 ## Ippotim语言后续的发展规划是什么？
