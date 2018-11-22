@@ -14,7 +14,7 @@
 ## 你为Ippotim语言做了哪些工作？
 * 笔者设计了Ippotim语言的基本语法，并用Java实现了一个小巧的解释器以及桌面端和安卓端两个图形界面程序（算是IDE吧），还提供了一些简单的演示程序，说明文档《The Ippotim Programming Language》也正在编写中，后续会上传到Ippotim Docs项目中。
 * 顺便说一下，笔者为Ippotim语言设计了一个logo，用“ippotim”的7个字符拼成了汉字的“谧”字。
-## What have you done for Ippotim？
+## What have you done for Ippotim?
 * I designed the basic syntax of Ippotim, implemented a small interpreter in Java, and two graphical interface programs (maybe IDE) on Desktop and Android, and provided some simple demos. The documentation, "The Ippotim Programming Language", is also in the works and will be shipped to The Ippotim Docs project.
 * By the way, I designed a logo for Ippotim, using seven characters of "Ippotim" to show the Chinese character "谧".
 
@@ -23,7 +23,7 @@
 * Ippotim iOS项目也在筹备中，但由于笔者对iOS开发并不熟悉，暂无明确项目计划。
 * 现有的Ippotim语言的解释器还没有实现严谨的基于文法分析的语法检查功能，对于某些代码会不能正确处理甚至会抛出异常，后续会补上。
 * Ippotim语言一开始就是为了AI编程而设计的，平台搭建好后就可以向AI编程进军了。AI编程是如此的激动人心，希望志同道合的朋友们能加入我们万众一心攻下这一城。
-## What is the future development plan of Ippotim？
+## What is the future development plan of Ippotim?
 * The syntax design of Ippotim has been stable after several adjustments made by me, but the possibility of further modifications due to more elaborate designs is not ruled out, but it seems unlikely.
 * The Ippotim iOS project is also in preparation, but because I am not familiar with iOS development, there is no clear project plan yet.
 * The existing Ippotim interpreter does not yet implement rigorous syntax-based syntax checking, and some code will fail to handle or even throw an exception, which will be covered later.
@@ -33,7 +33,7 @@
 * 因为Ippotim语言力求精简，所以实际上平台的搭建和维护工作并不需要太多的人来做。但AI编程毫无疑问是一个巨大的挑战，我们需要更多人的智慧来寻求突破。
 * 如果你发现了现有代码的不足或者想到或实现了一些很棒的功能，可以直接联系笔者（ippotim@yeah.net），我们很欢迎你的加入。
 * 如果你有了AI编程的一个新颖有效的想法，毫无疑问你也会是学界或业界的翘楚，如果你愿意跟我们共享你的创意，也直接联系笔者吧（ippotim@yeah.net）。
-## How to join you？
+## How to join you?
 * Since The Ippotim Programming Language is stripped-down, actually it doesn't take too many people to build and maintain the platform. But AI programming is undoubtedly a huge challenge, we need more people's wisdom to find breakthroughs.
 * If you have noticed a lack of existing code or have thought of or implemented some great features, you can contact me directly (ippotim@yeah.net). You are welcome to join us.
 * If you have a new and effective idea of AI programming, you will no doubt be an outstanding person in academy or company. If you are willing to share your ideas with us, please contact me directly(ippotim@yeah.net).
