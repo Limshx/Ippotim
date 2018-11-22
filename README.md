@@ -16,7 +16,7 @@
   顺便说一下，笔者为Ippotim语言设计了一个logo，用“ippotim”的7个字符拼成了汉字的“谧”字。
 ## What have you done for Ippotim？
   I designed The basic syntax of Ippotim, implemented a small interpreter in Java, and two graphical interface programs (maybe IDE) on Desktop and Android, and provided some simple demos. The documentation, "The Ippotim Programming Language", is also in the works and will be shipped to The Ippotim Docs project.
-  By the way, I designed a logo for Ippotim, using seven characters of "Ippotim" to the Chinese character "谧".
+  By the way, I designed a logo for Ippotim, using seven characters of "Ippotim" to show the Chinese character "谧".
 
 ## Ippotim语言后续的发展规划是什么？
   Ippotim语言的语法设计在经历了笔者的几次调整下已经趋于稳定，但不排除未来因为有了更精巧的设计而再次修改的可能，只是这种可能应该微乎其微了。
