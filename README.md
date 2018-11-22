@@ -7,7 +7,7 @@
 ## Ippotim语言有什么用？
   Ippotim语言语法简明易懂，而且是专门为图形编程而设计的，非常适合用作程序设计的启蒙教学，上至计算机科班生下至中小学生都会有很愉快的学习使用体验。
   事实上Ippotim语言是笔者为实现AI编程专门设计的一门程序设计语言，因为它足够精巧，你可以很容易基于它实现AI算法，而不必为现有的程序设计语言的复杂的语法伤脑筋，从而可以专注于算法设计本身。
-## What is the Ippotim for?
+## What is Ippotim for?
   Ippotim's syntax is simple and easy to understand, and it is specially designed for graphic programming. It is very suitable for the enlightenment teaching of programming. Students from the computer science class to primary and secondary school will have a pleasant learning experience.
   In fact, Ippotim is a programming language specially designed by me for the implementation of AI programming. Because it is delicate enough, you can easily implement AI algorithms based on it without having to worry about the complex syntax of existing programming languages, thus focusing on the algorithm design itself.
 
