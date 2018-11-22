@@ -20,10 +20,12 @@
 
 ## Ippotim语言后续的发展规划是什么？
   Ippotim语言的语法设计在经历了笔者的几次调整下已经趋于稳定，但不排除未来因为有了更精巧的设计而再次修改的可能，只是这种可能应该微乎其微了。
+  Ippotim iOS项目也在筹备中，但由于笔者对iOS开发并不熟悉，暂无明确项目计划。
   现有的Ippotim语言的解释器还没有实现严谨的基于文法分析的语法检查功能，对于某些代码会不能正确处理甚至会抛出异常，后续会补上。
   Ippotim语言一开始就是为了AI编程而设计的，平台搭建好后就可以向AI编程进军了。AI编程是如此的激动人心，希望志同道合的朋友们能加入我们万众一心攻下这一城。
 ## What is the future development plan of Ippotim？
   The syntax design of Ippotim has been stable after several adjustments made by me, but the possibility of further modifications due to more elaborate designs is not ruled out, but it seems unlikely.
+  The Ippotim iOS project is also in preparation, but because I am not familiar with iOS development, there is no clear project plan yet.
   The existing Ippotim interpreter do not yet implement rigorous syntax-based syntax checking, and some code will fail to handle or even throw an exception, which will be covered later.
   Ippotim was designed for AI programming at the beginning, and after the platform is built, we can enter into AI programming. AI programming is so exciting, we hope that like-minded friends can join us in the fight to achieve this goal.
 
