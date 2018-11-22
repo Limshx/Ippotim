@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+        <item
+                android:id="@+id/Import"
+                android:icon="@android:drawable/ic_menu_upload"
+                android:title="@string/Import"/>
+        <item
+                android:id="@+id/Export"
+                android:icon="@android:drawable/ic_menu_save"
+                android:title="@string/Export"/>
+        <item
+                android:id="@+id/Clear"
+                android:icon="@android:drawable/ic_menu_close_clear_cancel"
+                android:title="@string/Clear"/>
+        <item
+                android:id="@+id/Delete"
+                android:icon="@android:drawable/ic_menu_delete"
+                android:title="@string/Delete"/>
+</menu>
