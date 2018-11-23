@@ -70,6 +70,7 @@ class Executor {
                 nameOfArrayInstanceBuilder.append(getNumber(instances, arrayChain)).append(" ");
             }
             String nameOfArrayInstance = nameOfArrayInstanceBuilder.deleteCharAt(nameOfArrayInstanceBuilder.length() - 1).toString();
+            // arrayElements为null的时候其实elements也是null，类似S s; s[0].next[0] = s[0];的时候会为null，因为添加实例的elements的时候因为不能死循环所以initElements是false。
             if (null == instance.arrayElements) {
                 instance.arrayElements = new HashMap<>();
             }
@@ -231,7 +232,7 @@ class Executor {
                         if (instance != null) {
                             String input = graphicsOperation.getInput(instance.type);
                             if (instance.type.equals("number")) {
-                                setValue(instance, Long.parseLong(input));
+                                setValue(instance, Integer.parseInt(input));
                             } else if (instance.type.equals("string")) {
                                 // 类似getValue(instance) = input;是不行的，函数调用不能放在左边。
                                 setValue(instance, input);
@@ -245,27 +246,12 @@ class Executor {
                     StringBuilder stringBuilder = new StringBuilder();
                     if (command.elements.size() > 1) {
                         for (int i = 1; i < command.elements.size(); i++) { // 从1开始是因为0是“output”了，像这种以及case不加break等不合常规的行为都应添加注释或者说说明
-                            Instance instance = null;
                             String element = command.elements.get(i);
-                            String type;
-                            switch (getType(element)) {
-                                case STRING:
-                                    type = "string";
-                                    break;
-                                case NUMBER: // 跟表达式一起处理
-                                case EXPRESSION:
-                                    type = "number";
-                                    break;
-                                default: //case INSTANCE:
-                                    instance = getInstance(instances, element);
-                                    // 由于不允许新建内容为空的矩形，所以是不会有类型为""的变量的。
-                                    type = null != instance ? "instance" : "";
-                                    break;
-                            }
+                            String type = getType(element);
                             if (type.equals("instance")) {
-                                stringBuilder.append(getValue(instance));
+                                stringBuilder.append(getValue(getInstance(instances, element), "string"));
                             } else {
-                                stringBuilder.append(getValue(type, instances, element));
+                                stringBuilder.append(getValue(instances, element, type, "string"));
                             }
                         }
                     } else {
@@ -319,19 +305,20 @@ class Executor {
         if (treatAsGeneral) {
             to.elements = from.elements;
         } else {
-            setValue(to, getValue(from));
+            setValue(to, getValue(from, to.type));
         }
     }
 
-    private void assign(HashMap<String, Instance> instancesFrom, String stringFrom, Instance to) {
-        setValue(to, getValue(to.type, instancesFrom, stringFrom));
+    private void assign(HashMap<String, Instance> instancesFrom, String stringFrom, String typeFrom, Instance to) {
+        setValue(to, getValue(instancesFrom, stringFrom, typeFrom, to.type));
     }
 
     private void assign(HashMap<String, Instance> instancesFrom, String stringFrom, HashMap<String, Instance> instancesTo, String stringTo) {
         Instance from;
         Instance to = getInstance(instancesTo, stringTo);
         if (null != to) {
-            if (StringType.INSTANCE == getType(stringFrom)) {
+            String typeFrom = getType(stringFrom);
+            if (typeFrom.equals("instance")) {
                 from = getInstance(instancesFrom, stringFrom);
                 if (null != from) {
                     boolean treatAsGeneral = true;
@@ -346,38 +333,46 @@ class Executor {
                     assign(from, to, treatAsGeneral);
                 }
             } else {
-                assign(instancesFrom, stringFrom, to);
+                assign(instancesFrom, stringFrom, typeFrom, to);
             }
         }
     }
 
-    private enum StringType {
-        STRING, NUMBER, EXPRESSION, INSTANCE
-    }
-
-    // 0是字符串常量，1是数字常量，2是算术表达式，3是变量；想想还是用enum吧。
-    private StringType getType(String s) {
+    private String getType(String s) {
         if ('"' == s.charAt(0)) {
-            return StringType.STRING;
+            return "string";
         } else {
             try {
-                Long.parseLong(s);
-                return StringType.NUMBER;
+                Integer.parseInt(s);
+                return "number";
             } catch (NumberFormatException e) {
-                int match = 0;
+                int[] match = {0, 0};
                 for (int i = 0; i < s.length(); i++) {
-                    if ('[' == s.charAt(i)) {
-                        match += 1;
-                    } else if (']' == s.charAt(i)) {
-                        match -= 1;
+                    if ('(' == s.charAt(i)) {
+                        match[0] += 1;
+                    } else if (')' == s.charAt(i)) {
+                        match[0] -= 1;
                     }
-                    if (0 == match) {
+
+                    if ('[' == s.charAt(i)) {
+                        match[1] += 1;
+                    } else if (']' == s.charAt(i)) {
+                        match[1] -= 1;
+                    }
+                    if (0 == match[0] && 0 == match[1]) {
                         if ('+' == s.charAt(i) || '-' == s.charAt(i) || '*' == s.charAt(i) || '/' == s.charAt(i)) {
-                            return StringType.EXPRESSION;
+                            return "number";
+                        }
+                        if ('?' == s.charAt(i)) {
+                            return "string";
+                        }
+                        // 主体在一组小括号里面，这就要求非number类型的变量不能放在小括号内。
+                        if ('(' == s.charAt(0) && ')' == s.charAt(i) && i + 1 == s.length()) {
+                            return "number";
                         }
                     }
                 }
-                return StringType.INSTANCE;
+                return "instance";
             }
         }
     }
@@ -403,51 +398,53 @@ class Executor {
         return list != null ? new LinkedList<>(list.subList(1, list.size() - 1)) : null;
     }
 
-    private boolean isTheSame(HashMap<String, Instance> instances, String[] parameters) {
-        StringType[] stringType = new StringType[2];
-        stringType[0] = getType(parameters[0]);
-        stringType[1] = getType(parameters[1]);
-        if (StringType.INSTANCE == stringType[0] && StringType.INSTANCE == stringType[1]) {
+    private boolean isTheSame(HashMap<String, Instance> instances, String[] parameters, String[] types) {
+        if (types[0].equals("instance") && types[1].equals("instance")) {
             Instance[] instance = new Instance[2];
             instance[0] = getInstance(instances, parameters[0]);
             instance[1] = getInstance(instances, parameters[1]);
             if (null != instance[0] && null != instance[1]) {
-                if (instance[0].type.equals("string") || instance[0].type.equals("number")) {
-                    return getValue(instance[0]) == getValue(instance[1]);
-                } else {
+                if (!instance[0].type.equals("string") && !instance[0].type.equals("number") && !instance[1].type.equals("string") && !instance[1].type.equals("number")) {
                     return instance[0].elements.equals(instance[1].elements);
+                } else if (instance[0].type.equals("string") && instance[1].type.equals("string")) {
+                    return getValue(instance[0], "string").equals(getValue(instance[1], "string"));
+                } else {
+                    return getValue(instance[0], "number") == getValue(instance[1], "number");
                 }
             } else {
                 return false;
             }
         } else {
-            if (StringType.STRING == stringType[0] || StringType.STRING == stringType[1]) {
-                return getString(instances, parameters[0]).equals(getString(instances, parameters[1]));
+            if (types[0].equals("string") && types[1].equals("string")) {
+                return getValue(instances, parameters[0], types[0], "string").equals(getValue(instances, parameters[1], types[1], "string"));
             } else {
-                return getNumber(instances, parameters[0]) == getNumber(instances, parameters[1]);
+                return getValue(instances, parameters[0], types[0], "number") == getValue(instances, parameters[1], types[1], "number");
             }
         }
     }
 
     private boolean compare(HashMap<String, Instance> instances, String[] parameters, String operation) {
+        String[] types = new String[2];
+        types[0] = getType(parameters[0]);
+        types[1] = getType(parameters[1]);
         switch (operation) {
             case "<": {
-                return getNumber(instances, parameters[0]) < getNumber(instances, parameters[1]);
+                return (int) getValue(instances, parameters[0], types[0], "number") < (int) getValue(instances, parameters[1], types[1], "number");
             }
             case "<=": {
-                return getNumber(instances, parameters[0]) <= getNumber(instances, parameters[1]);
+                return (int) getValue(instances, parameters[0], types[0], "number") <= (int) getValue(instances, parameters[1], types[1], "number");
             }
             case "==": {
-                return isTheSame(instances, parameters);
+                return isTheSame(instances, parameters, types);
             }
             case "!=": {
-                return !isTheSame(instances, parameters);
+                return !isTheSame(instances, parameters, types);
             }
             case ">=": {
-                return getNumber(instances, parameters[0]) >= getNumber(instances, parameters[1]);
+                return (int) getValue(instances, parameters[0], types[0], "number") >= (int) getValue(instances, parameters[1], types[1], "number");
             }
             case ">": {
-                return getNumber(instances, parameters[0]) > getNumber(instances, parameters[1]);
+                return (int) getValue(instances, parameters[0], types[0], "number") > (int) getValue(instances, parameters[1], types[1], "number");
             }
             default: {
                 return false;
@@ -501,10 +498,11 @@ class Executor {
                     }
 
                     int bracket = inWholeBrackets ? 1 : 0;
+                    String subExpression = booleanExpression.substring(start + bracket, i + reachEnd - bracket);
                     if (0 == preOperation) {
-                        result = result && isTrue(instances, booleanExpression.substring(start + bracket, i + reachEnd - bracket));
+                        result = result && isTrue(instances, subExpression);
                     } else {
-                        result = result || isTrue(instances, booleanExpression.substring(start + bracket, i + reachEnd - bracket));
+                        result = result || isTrue(instances, subExpression);
                     }
                     preOperation = s.startsWith("&&") ? 0 : 1;
                     start = i + 2; // 暂时写死为2
@@ -516,6 +514,7 @@ class Executor {
 
     // 布尔表达式设计成不允许字符串和数字直接或者说单独出现之类似if 1或if "1"，允许变量名和比较表达式。至于||与&&之类的复合布尔表达式，理应是要加上的，只是需要一种优雅的方法，最好与数字运算统一起来。一般的形式当然是有小括号有与或非，为简化设计，与或非皆用以连接子布尔表达式，除了单独出现的变量名之判断是否非空，都要加小括号，只有一条布尔表达式则可用可不用。合法的表达式是类似：a、!a、a<b、!(a<b)、!(a<b)||(!(a<b)&&!(a<b))，这里类似!!!a其实也是合法的，暂酱紫。
     private boolean isTrueBasic(HashMap<String, Instance> instances, String booleanExpression) {
+        // 本来这里只保留< = >这3个就可以了，注意这里用了=而不是==，因为不允许布尔表达式中赋值的话就没必要两个等号表示等于了。不过考虑到所有主流的程序设计语言都是支持所有这些比较符的，尤其等于用=而不是==的话就是冒天下之大不韪了，故暂保留所有。
         String[] comparisonOperators = {"<=", "<", "==", "!=", ">=", ">"};
         for (String comparisonOperator : comparisonOperators) {
             String[] elements = booleanExpression.split(comparisonOperator);
@@ -536,16 +535,25 @@ class Executor {
         instance.elements.getFirst().name = value;
     }
 
-    private Object getValue(Instance instance) {
+    private Object getValue(Instance instance, String typeTo) {
         Object value;
         if (instance != null) {
             value = instance.elements.getFirst().name;
             switch (instance.type) {
                 case "string":
-                    return value != null ? value : "";
+                    String string = value != null ? (String) value : "";
+                    if (typeTo.equals(instance.type)) {
+                        return string;
+                    } else {
+                        return string.length();
+                    }
                 case "number":
-                    // 不强转long的话默认是int，这样后面转换会报错
-                    return value != null ? value : (long) 0;
+                    int number = value != null ? (int) value : 0;
+                    if (typeTo.equals(instance.type)) {
+                        return number;
+                    } else {
+                        return number + "";
+                    }
                 default:
                     return null;
             }
@@ -553,37 +561,82 @@ class Executor {
         return null;
     }
 
-    private Object getValue(String type, HashMap<String, Instance> instances, String instanceName) {
-        switch (type) {
-            case "string":
-                return getString(instances, instanceName);
-            case "number":
-                return getNumber(instances, instanceName);
-            default:
-                return null;
+    private Object getValue(HashMap<String, Instance> instances, String instanceName, String typeFrom, String typeTo) {
+        if (typeFrom.equals("string")) {
+            String string = getString(instances, instanceName);
+            if (typeTo.equals("number")) {
+                return string.length();
+            } else {
+                return string;
+            }
+        } else {
+            int number = getNumber(instances, instanceName);
+            if (typeTo.equals("string")) {
+                return number + "";
+            } else {
+                return number;
+            }
         }
+    }
+
+    private LinkedList<String> getParts(String instanceName) {
+        LinkedList<String> parts = new LinkedList<>();
+        // 下面这段跟getNumber()里的是一样的，后续肯定还可以也还得压缩。
+        int[] match = {0, 0};
+        for (int i = 0; i < instanceName.length(); i++) {
+            if (instanceName.charAt(i) == '(') {
+                match[0]++;
+            } else if (instanceName.charAt(i) == ')') {
+                match[0]--;
+            }
+
+            if (instanceName.charAt(i) == '[') {
+                match[1]++;
+            } else if (instanceName.charAt(i) == ']') {
+                match[1]--;
+            }
+
+            if (0 == match[0] && 0 == match[1]) {
+                if ('?' == instanceName.charAt(i)) {
+                    parts.add(instanceName.substring(0, i));
+                    parts.add(instanceName.substring(i + 1));
+                    return parts;
+                }
+            }
+        }
+
+        parts.add(instanceName);
+        return parts;
     }
 
     // 还有一个问题，似乎number、string类型变量与数字、字符串常量的映射表也要作局部变量处理
     private String getString(HashMap<String, Instance> instances, String instanceName) {
         // 双引号不设转义字符的话似乎无法正确处理一般字符串，故设计为字符串内不允许出现双引号之取字符串的真子集，其实也不影响功能，至少可以用单引号代替。
-        if ('"' == instanceName.charAt(0)) {
-            return instanceName.substring(1, instanceName.length() - 1);
+        // 这里是递归关系，不能instanceName.split("\\?")。
+        LinkedList<String> parts = getParts(instanceName);
+        String string;
+        if ('"' == parts.get(0).charAt(0)) {
+            string = parts.get(0).substring(1, parts.get(0).length() - 1);
         } else {
-            Instance instance = getInstance(instances, instanceName);
-            return (String) getValue(instance);
+            Instance instance = getInstance(instances, parts.get(0));
+            string = (String) getValue(instance, "string");
+        }
+        if (1 == parts.size()) {
+            return string;
+        } else {
+            return "" + (null != string ? string.charAt(getNumber(instances, parts.get(1))) : "");
         }
     }
 
     // 统一之类似勾股变余弦是压缩优化代码的技巧甚至说基础
-    private long getNumber(long a, long b, long c, int operationType) {
-        long value;
+    private int getNumber(int a, int b, int c, int operationType) {
+        int value;
         switch (operationType) {
             case 0:
                 value = a + b * c;
                 break;
             case 1:
-                value = (long) (a * Math.pow(b, c));
+                value = (int) (a * Math.pow(b, c));
                 break;
             default:
                 value = 0;
@@ -595,18 +648,17 @@ class Executor {
     private char[][] operations = {{'+', '-'}, {'*', '/'}};
 
     // operationType决定是加减运算还是乘除运算，0表示加减，1表示乘除
-    private Long getNumber(HashMap<String, Instance> instances, String instanceName, int operationType) {
-        long value = 0 == operationType ? 0 : 1;
+    private Integer getNumber(HashMap<String, Instance> instances, String instanceName, int operationType) {
+        int value = 0 == operationType ? 0 : 1;
         boolean metOperation = false;
         // 上一个运算符是否+或*，1表示是，-1表示不是
         int addOrMul = 1;
-        boolean metBrackets = false;
+        boolean inWholeBrackets = true;
         int reachEnd;
         int start = 0;
         int[] match = {0, 0};
         for (int i = 0; i < instanceName.length(); i++) {
             if (instanceName.charAt(i) == '(') {
-                metBrackets = true;
                 match[0]++;
             } else if (instanceName.charAt(i) == ')') {
                 match[0]--;
@@ -625,13 +677,19 @@ class Executor {
                     }
 
                     if (i + 1 == instanceName.length()) {
+                        if (')' != instanceName.charAt(i)) {
+                            inWholeBrackets = false;
+                        }
                         if (!metOperation) {
                             if (1 == operationType) {
-                                if (metBrackets) {
+                                if ('(' != instanceName.charAt(0)) {
+                                    inWholeBrackets = false;
+                                }
+                                if (inWholeBrackets) {
                                     return getNumber(instances, instanceName.substring(1, instanceName.length() - 1));
                                 } else {
                                     Instance instance = getInstance(instances, instanceName);
-                                    return (Long) getValue(instance);
+                                    return (Integer) getValue(instance, "number");
                                 }
                             }
                             // 这句放到else里也是一样的，但会报函数太复杂警告
@@ -658,12 +716,12 @@ class Executor {
     // 传入的字符串可以是类似：123、(a+1)*2/3。如果没有括号就是先对加减split再对乘除split，但有了的话就要先处理好来了。可以采用替换法，把类似(a+1)*2/3替换为b = a+1和b*2/3，这个b的命名似乎不大好处理，所以还是直接进入递归之遇到左括号就往后找到右括号把里面的算式送入递归。然后就是提取或者说识别出数字与变量，是数字就直接转成数字，是变量就查表得到值再转成数字。
     // 文法处理是一种典型的问题，因为要考虑很多情况，当然从高层级入手之少生多复合就可以轻松解决。要考虑可以获取那些元素，获取后该怎么用，比如a[2][2]这种就可以获取a、2、2,然后如何根据得到的数据达到目的。像算式解析算法这种，黑盒测试之无论数据集有多大都是不行的，必须从高层级之审视算法本身的正确性，这就是其数学本质或者说广义运算或者说广义计算本质。所谓KISS原则，并不是说就可以随便给出一些很蠢的方案，不然也就没必要研究算法了，只是说不要在一些无谓的细节上炫技。
     // 似信息检索很重要，我们面对一些问题，要尽可能从根源检索，一般是官方文档、API等，了解问题基本知识背景，然后才是问题编译说之考虑解决方案。
-    // 只支持long是因为只关注离散量
-    private long getNumber(HashMap<String, Instance> instances, String instanceName) {
+    // 只支持int是因为只关注离散量
+    private int getNumber(HashMap<String, Instance> instances, String instanceName) {
         try {
-            return Long.parseLong(instanceName); // 数太大溢出会导致解析错误无限循环，这个提前报错即可，报错功能后续会添加
+            return Integer.parseInt(instanceName); // 数太大溢出会导致解析错误无限循环，这个提前报错即可，报错功能后续会添加
         } catch (NumberFormatException e) {
-            Long value = getNumber(instances, instanceName, 0);
+            Integer value = getNumber(instances, instanceName, 0);
             if (null != value) {
                 return value;
             } else {
