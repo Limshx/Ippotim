@@ -7,15 +7,15 @@
 * Ippotim编程是和图形界面操作紧密联系在一起的，刚进入主界面的时候看到的位于中间的就是用以表示main函数的一个矩形组，没有任何语句。main函数所在的矩形组是白底黑字的。
 ![Main Page](Main&#32;Page.png)
 * 点击“+”所在的矩形可以新建一条语句。
-![New Statement](New Stetement.png)
+![New Statement](New&#32;Stetement.png)
 * 选中一条语句可以在功能菜单中选择插入、修改、移除操作。
 * string和number是两种基本结构或者说类型，结构名可以用以新建变量。
 * 双击可以新建结构定义，需要输入结构名。结构定义所在的矩形组是红底黄字的。
-![New Structure](New Structure.png)
+![New Structure](New&#32;Structure.png)
 * 给结构定义新建语句就是为其添加成员。
-![New Structure Member](New Structure Member.png)
+![New Structure Member](New&#32;Structure&#32;Member.png)
 * 右键（移动端是长按）可以新建函数定义，需要输入函数名和形参列表，形参之间用逗号隔开。函数定义所在的矩形组是黄底红字的。
-![New Function](New Function.png)
+![New Function](New&#32;Function.png)
 * main函数和自定义函数除了颜色不同外，没什么区别。
 ## Ippotim中的基本语句
 * 定义语句：结构名+变量名，比如“number n”、“string s”、“S s”。
@@ -27,6 +27,6 @@
 * 注意，所有的表达式内都不能有空格。新建条件语句和循环语句后会在当前矩形组右边新建一个矩形组，称为该语句的子句。条件语句的子句内可以新建else语句，循环语句内可以新建break和continue语句，都是单独成句。
 * 函数调用语句：函数名+实参列表，实参之间用空格隔开，比如“F n s”。
 * 未知语句：无法识别的语句即为未知语句，可以用来注释，比如“// n = m/2”。
-![Basic Statements](Basic Statements.png)
+![Basic Statements](Basic&#32;Statements.png)
 ## 代码运行与导入导出
 * Ippotim编程实际就是各种矩形和矩形组的操作，矩形内绘制的字符串即为Ippotim代码。在功能菜单中可以选择运行、导入、导出和清空等操作。
