@@ -247,12 +247,7 @@ class Executor {
                     if (command.elements.size() > 1) {
                         for (int i = 1; i < command.elements.size(); i++) { // 从1开始是因为0是“output”了，像这种以及case不加break等不合常规的行为都应添加注释或者说说明
                             String element = command.elements.get(i);
-                            String type = getType(element);
-                            if (type.equals("instance")) {
-                                stringBuilder.append(getValue(getInstance(instances, element), "string"));
-                            } else {
-                                stringBuilder.append(getValue(instances, element, type, "string"));
-                            }
+                            stringBuilder.append(getValue(instances, element, "string"));
                         }
                     } else {
                         // 当output单独成句之不接任何参数，就是输出换行符，这个设计简直巧夺天工。
@@ -366,7 +361,10 @@ class Executor {
                         if ('?' == s.charAt(i)) {
                             return "string";
                         }
-                        // 主体在一组小括号里面，这就要求非number类型的变量不能放在小括号内。
+                        if ('.' == s.charAt(i)) {
+                            return "instance";
+                        }
+                        // 主体在一组小括号里面，这就要求非number类型的变量不能放在小括号内。现在是string类型的也可以，毕竟基本类型之间可以互相转换，那就是非基本数据类型的变量不能了。首尾分别是左右括号主体却并非在小括号里的情况是类似(s).(s)或(s)&&(s)或(s)*(s)，其中布尔表达式不直接调用本函数，中间的数字运算符在上面已经判断过了。
                         if ('(' == s.charAt(0) && ')' == s.charAt(i) && i + 1 == s.length()) {
                             return "number";
                         }
@@ -561,6 +559,15 @@ class Executor {
         return null;
     }
 
+    private Object getValue(HashMap<String, Instance> instances, String instanceName, String typeTo) {
+        String type = getType(instanceName);
+        if (type.equals("instance")) {
+            return getValue(getInstance(instances, instanceName), typeTo);
+        } else {
+            return getValue(instances, instanceName, type, typeTo);
+        }
+    }
+
     private Object getValue(HashMap<String, Instance> instances, String instanceName, String typeFrom, String typeTo) {
         if (typeFrom.equals("string")) {
             String string = getString(instances, instanceName);
@@ -688,8 +695,7 @@ class Executor {
                                 if (inWholeBrackets) {
                                     return getNumber(instances, instanceName.substring(1, instanceName.length() - 1));
                                 } else {
-                                    Instance instance = getInstance(instances, instanceName);
-                                    return (Integer) getValue(instance, "number");
+                                    return (Integer) getValue(instances, instanceName, "number");
                                 }
                             }
                             // 这句放到else里也是一样的，但会报函数太复杂警告

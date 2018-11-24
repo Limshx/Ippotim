@@ -85,8 +85,12 @@ public class Adapter {
             }
         }
 
-        executor.run(Executor.getDataList(functions.get("")));
-        // debug就是研究非预期行为的成因，看代码推敲是不够的，还需要有显示中间数据的手段
+        try {
+            executor.run(Executor.getDataList(functions.get("")));
+            // debug就是研究非预期行为的成因，看代码推敲是不够的，还需要有显示中间数据的手段
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void stop() {
@@ -504,8 +508,8 @@ public class Adapter {
 
     // 选中矩形后长按即弹出输入窗口让更新内容，如果是改了像if、else、while这样有子句者则删除子句，或者为了防止误触还是设置一个modify菜单项。本来是可以直接改的，不过改变等价于删除加添加，只是这样删除第一个矩形的时候就难了，可以在TreeNode链表再添加一个不关联矩形的头结点，只是第一个矩形其实没有删除的必要
     public void modify(String s) {
-        // 不允许修改main函数和子句的头结点，不允许修改为else语句或“”
-        if (null == selectedList || selectedTreeNode.rectangle.content.equals("") || s.equals("else") || s.equals("")) {
+        // 不允许修改main函数和子句的头结点，不允许修改或修改为else语句或“”
+        if (null == selectedList || selectedTreeNode.rectangle.content.equals("else") || selectedTreeNode.rectangle.content.equals("") || s.equals("else") || s.equals("")) {
             selectedTreeNode = null;
             return;
         }
@@ -534,10 +538,10 @@ public class Adapter {
                 boolean justReturn = false;
 
                 boolean[] hasSubTreeNodes = new boolean[2];
-                hasSubTreeNodes[0] = s.startsWith("if ") || s.equals("else") || s.startsWith("while ");
+                hasSubTreeNodes[0] = s.startsWith("if ") || s.startsWith("while ");
                 // 这时候t就是selectedTreeNode
                 String content = t.rectangle.content;
-                hasSubTreeNodes[1] = content.startsWith("if ") || content.equals("else") || content.startsWith("while ");
+                hasSubTreeNodes[1] = content.startsWith("if ") || content.startsWith("while ");
                 // 都没有子句或都有子句则直接返回，这是最简单的处理，不要想得太复杂
                 if (hasSubTreeNodes[0] == hasSubTreeNodes[1]) {
                     justReturn = true;
