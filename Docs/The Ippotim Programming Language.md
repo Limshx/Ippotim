@@ -22,7 +22,7 @@
 * 定义语句：结构名+变量名，比如“number n”、“string s”、“S s”。
 * 赋值语句：变量+“=”+变量或表达式，比如“n = m”、“n = m/2”。注意，在Ippotim语言中strng和number可以互相赋值，比如s是string变量而n是number变量，s赋给n后n的值是s的长度，比如n是666,n赋给s后s的值是"666"。另，string支持?运算，用以进行字符串索引，比如s的值是"abc"，执行“s = s?2”后s的值是"c"。
 * 输入语句：“input”+基本类型变量，比如“input n”、“input s.s”。注意，只能输入基本类型变量，也即number和string类型的变量。
-* 输出语句：“output”+基本类型变量，比如“output n”、“output s.s”。注意，只能输出基本类型变量，也即number和string类型的变量。
+* 输出语句：“output”+基本类型变量，比如“output n”、“output s.s”。注意，只能输出基本类型变量，也即number和string类型的变量。output后不加任何常量变量就是输出换行符，这也是惟一的输出换行符的方法。
 * 条件语句：“if”+布尔表达式，比如“if n<6”。
 * 循环语句：“while”+布尔表达式，比如“while n<6”。
 * 注意，所有的表达式内都不能有空格。新建条件语句和循环语句后会在当前矩形组右边新建一个矩形组，称为该语句的子句。条件语句的子句内可以新建else语句，循环语句内可以新建break和continue语句，都是单独成句。
