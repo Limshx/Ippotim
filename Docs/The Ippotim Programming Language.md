@@ -14,7 +14,7 @@
 ![New Structure](New&#32;Structure.png)
 * 给结构定义新建语句就是为其添加成员。
 ![New Structure Member](New&#32;Structure&#32;Member.png)
-* 右键（移动端是长按）可以新建函数定义，需要输入函数名和形参列表，形参之间用逗号隔开。函数定义所在的矩形组是黄底红字的。
+* 右键（移动端是长按）可以新建函数定义，需要输入函数名和形参列表，形参之间用逗号隔开。函数定义所在的矩形组是黄底红字的。<br/>
 ![New Function](New&#32;Function.png)
 * main函数和自定义函数除了颜色不同外，没什么区别。
 ## Ippotim中的基本语句
