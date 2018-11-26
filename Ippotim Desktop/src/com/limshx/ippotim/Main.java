@@ -1,5 +1,7 @@
 package com.limshx.ippotim;
 
+import Kernel.Adapter;
+
 import javax.imageio.ImageIO;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -9,7 +11,6 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.WindowConstants;
-import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -51,7 +52,7 @@ class Main extends JFrame {
 
         JMenuBar jMenuBar = new JMenuBar();
         JMenu jMenu;
-        JMenuItem[] jMenuItems = new JMenuItem[4];
+        JMenuItem[] jMenuItems = new JMenuItem[6];
         jMenu = new JMenu("File");
         jMenuItems[0] = new JMenuItem("Import");
         jMenuItems[0].addActionListener(actionEvent -> {
@@ -81,7 +82,7 @@ class Main extends JFrame {
         jMenuItems[2] = new JMenuItem("Clear");
         jMenuItems[2].addActionListener(actionEvent -> {
             openedFile = null;
-            drawTable.adapter.init(drawTable.getWidth() / 2, drawTable.getHeight() / 2, 1);
+            drawTable.adapter = new Adapter(drawTable, drawTable.getWidth() / 2, drawTable.getHeight() / 2, 1);
             drawTable.doRepaint();
         });
         jMenu.add(jMenuItems[0]);
@@ -92,15 +93,16 @@ class Main extends JFrame {
         jMenuItems[0] = new JMenuItem("Run");
         jMenuItems[1] = new JMenuItem("Insert");
         jMenuItems[2] = new JMenuItem("Modify");
-        jMenuItems[3] = new JMenuItem("Remove");
+        jMenuItems[3] = new JMenuItem("Copy");
+        jMenuItems[4] = new JMenuItem("Paste");
+        jMenuItems[5] = new JMenuItem("Remove");
         JScrollPane jScrollPane = new JScrollPane(drawTable.jTextArea);
+        drawTable.jTextArea.setEditable(false);
         JFrame jFrame = new JFrame("Output");
         jFrame.add(jScrollPane);
         int windowSize = drawTable.windowSize / 2;
         jFrame.setSize(windowSize, windowSize);
-        int screenWidth = Toolkit.getDefaultToolkit().getScreenSize().width;
-        int screenHeight = Toolkit.getDefaultToolkit().getScreenSize().height;
-        jFrame.setLocation(screenWidth / 2 - windowSize / 2, screenHeight / 2 - windowSize / 2);
+        drawTable.setWindowCenter(jFrame);
         jFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -129,6 +131,21 @@ class Main extends JFrame {
         });
         jMenuItems[3].addActionListener(actionEvent -> {
             if (drawTable.adapter.hasSelectedTreeNode()) {
+                drawTable.adapter.copy();
+            } else {
+                JOptionPane.showMessageDialog(null, "Please select a rectangle first!");
+            }
+        });
+        jMenuItems[4].addActionListener(actionEvent -> {
+            if (drawTable.adapter.hasSelectedTreeNode()) {
+                drawTable.adapter.paste();
+                drawTable.doRepaint();
+            } else {
+                JOptionPane.showMessageDialog(null, "Please select a rectangle first!");
+            }
+        });
+        jMenuItems[5].addActionListener(actionEvent -> {
+            if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.adapter.delete();
                 drawTable.doRepaint();
             } else {
@@ -139,6 +156,8 @@ class Main extends JFrame {
         jMenu.add(jMenuItems[1]);
         jMenu.add(jMenuItems[2]);
         jMenu.add(jMenuItems[3]);
+        jMenu.add(jMenuItems[4]);
+        jMenu.add(jMenuItems[5]);
         jMenuBar.add(jMenu);
 //        jMenu = new JMenu("New");
 //        JMenuItem jMenuItem = new JMenuItem("Function");
@@ -149,7 +168,7 @@ class Main extends JFrame {
 
         drawRect.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         drawRect.setSize(drawTable.windowSize, drawTable.windowSize);
-        drawRect.setLocation(screenWidth / 2 - drawTable.windowSize / 2, screenHeight / 2 - drawTable.windowSize / 2);
+        drawTable.setWindowCenter(drawRect);
         drawRect.setVisible(true);
     }
 }

@@ -1,5 +1,6 @@
 package com.limshx.ippotim;
 
+import Kernel.Adapter;
 import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -78,12 +79,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case 0: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    if (initDirectoryFailed()) {
-                        Toast.makeText(this, "Create path failed!", Toast.LENGTH_SHORT).show();
-                    }
+        if (requestCode == 0) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (initDirectoryFailed()) {
+                    Toast.makeText(this, "Create path failed!", Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -187,7 +186,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void clear() {
         openedFile = null;
-        drawTable.adapter.init(drawTable.getMeasuredWidth() / 2, drawTable.getMeasuredHeight() / 2, drawTable.getScale());
+        drawTable.adapter = new Adapter(drawTable, drawTable.getMeasuredWidth() / 2, drawTable.getMeasuredHeight() / 2, drawTable.getScale());
         drawTable.doRepaint();
     }
 
@@ -286,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
-        MenuItem menuItem[] = new MenuItem[4];
+        MenuItem[] menuItem = new MenuItem[6];
 
         menuItem[0] = menu.add(0, 0, 0, "Run");
         menuItem[0].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
@@ -357,8 +356,35 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         });
 
-        menuItem[3] = menu.add(0, 0, 0, "Remove");
+        menuItem[3] = menu.add(0, 0, 0, "Copy");
         menuItem[3].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                if (drawTable.adapter.hasSelectedTreeNode()) {
+                    drawTable.adapter.copy();
+                } else {
+                    Toast.makeText(context, "Please select a rectangle first!", Toast.LENGTH_SHORT).show();
+                }
+                return true;
+            }
+        });
+
+        menuItem[4] = menu.add(0, 0, 0, "Paste");
+        menuItem[4].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                if (drawTable.adapter.hasSelectedTreeNode()) {
+                    drawTable.adapter.paste();
+                    drawTable.doRepaint();
+                } else {
+                    Toast.makeText(context, "Please select a rectangle first!", Toast.LENGTH_SHORT).show();
+                }
+                return true;
+            }
+        });
+
+        menuItem[5] = menu.add(0, 0, 0, "Remove");
+        menuItem[5].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 if (drawTable.adapter.hasSelectedTreeNode()) {

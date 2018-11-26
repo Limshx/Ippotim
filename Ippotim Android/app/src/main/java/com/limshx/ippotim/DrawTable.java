@@ -13,6 +13,7 @@ import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 public class DrawTable extends View implements GraphicsOperation {
     DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -30,7 +31,7 @@ public class DrawTable extends View implements GraphicsOperation {
         super(context, attrs);
         this.context = context;
         paint.setAntiAlias(true);
-        paint.setTypeface(Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD));
+        paint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.NORMAL));
 
         this.setOnLongClickListener(new OnLongClickListener() {
             @Override
@@ -50,16 +51,14 @@ public class DrawTable extends View implements GraphicsOperation {
         //输入源为可显示的指针设备，如：mouse pointing device(鼠标指针),stylus pointing device(尖笔设备)
         //滚轮缩放很重要的，不然像Remix之类的桌面安卓就没法用了，然而桌面才是真正有生产力的
         if (0 != (motionEvent.getSource() & InputDevice.SOURCE_CLASS_POINTER)) {
-            switch (motionEvent.getAction()) {
-                // 处理滚轮事件
-                case MotionEvent.ACTION_SCROLL:
-                    //获得垂直坐标上的滚动方向,也就是滚轮向下滚
-                    int x, y;
-                    x = (int) motionEvent.getX();
-                    y = (int) motionEvent.getY();
-                    double scale = Math.pow(1.1, -motionEvent.getAxisValue(MotionEvent.AXIS_VSCROLL));
-                    adapter.doWheelRotation(x, y, scale);
-                    doRepaint();
+            // 处理滚轮事件
+            if (motionEvent.getAction() == MotionEvent.ACTION_SCROLL) {//获得垂直坐标上的滚动方向,也就是滚轮向下滚
+                int x, y;
+                x = (int) motionEvent.getX();
+                y = (int) motionEvent.getY();
+                double scale = Math.pow(1.1, -motionEvent.getAxisValue(MotionEvent.AXIS_VSCROLL));
+                adapter.doWheelRotation(x, y, scale);
+                doRepaint();
             }
         }
         return super.onGenericMotionEvent(motionEvent);
@@ -135,8 +134,7 @@ public class DrawTable extends View implements GraphicsOperation {
         int px = getMeasuredWidth();
         int py = getMeasuredHeight();
         double scale = getScale();
-        adapter = new Adapter(graphicsOperation);
-        adapter.init(px / 2, py / 2, scale);
+        adapter = new Adapter(graphicsOperation, px / 2, py / 2, scale);
         Terminal.fontSize = (int) (24 / scale);
     }
 
@@ -261,7 +259,7 @@ public class DrawTable extends View implements GraphicsOperation {
     }
 
     private boolean inputted;
-    private String inputString;
+    private Object input;
 
     private void waitForInput() {
         while (!inputted) {
@@ -275,26 +273,32 @@ public class DrawTable extends View implements GraphicsOperation {
     }
 
     @Override
-    public String getInput(final String s) {
+    public Object getInput() {
         post(new Runnable() {
             @Override
             public void run() {
-                InfoBox infoBox = new InfoBox("Input a " + s + " :", "OK", "Cancel", new EditText(context), context) {
+                InfoBox infoBox = new InfoBox("Input a value :", "String", "Number", new EditText(context), context) {
                     @Override
                     void onPositive() {
-                        inputString = ((EditText) getView()).getText().toString();
+                        input = ((EditText) getView()).getText().toString();
                         inputted = true;
                     }
 
                     @Override
                     void onNegative() {
-
+                        try {
+                            input = Integer.parseInt(((EditText) getView()).getText().toString());
+                            inputted = true;
+                            getAlertDialog().cancel();
+                        } catch (NumberFormatException e) {
+                            Toast.makeText(context, "Not an integer!", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 };
-                infoBox.showDialog();
+                infoBox.showDialog(false);
             }
         });
         waitForInput();
-        return inputString;
+        return input;
     }
 }

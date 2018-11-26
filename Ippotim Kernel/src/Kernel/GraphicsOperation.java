@@ -13,7 +13,7 @@ public interface GraphicsOperation {
 
     int getTextLength(String s, int fontSize);
 
-    String getInput(String s);
+    Object getInput();
 
     void create(String s);
 }

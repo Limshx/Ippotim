@@ -12,7 +12,7 @@ class TreeNode {
     LinkedList<TreeNode> subTreeNodes;
 
     void updateElements(Executor executor) {
-        elements = Executor.getRegularElements(rectangle.content);
+        elements = Executor.getRegularElements(rectangle.getContent());
         commandType = executor.getCommandType(this);
     }
 }
