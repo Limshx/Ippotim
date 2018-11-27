@@ -231,7 +231,7 @@ class Executor {
                     for (int i = 1; i < command.elements.size(); i++) {
                         Instance instance = getInstance(instances, command.elements.get(i));
                         if (instance != null) {
-                            setValue(instance, graphicsOperations.getInput());
+                            setValue(instance, getValue(instances, graphicsOperations.getInput()));
                         }
                     }
                     break;

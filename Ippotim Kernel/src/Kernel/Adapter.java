@@ -526,13 +526,11 @@ public class Adapter {
         }
         LinkedList<TreeNode> linkedList = selectedList;
         TreeNode preTreeNode = linkedList.getFirst();
-        TreeNode savedTreeNode = null;
         for (TreeNode t : linkedList) {
             if (t.equals(selectedTreeNode)) {
-                savedTreeNode = t;
-                t.rectangle.setContent(s);
                 // 特殊结点删除作特殊处理
                 if (t.equals(linkedList.getFirst())) {
+                    t.rectangle.setContent(s);
                     if (t.rectangle.color.rectangleColor == Color.RED) { // 说明是结构定义
                         unregisterStructure(selectedList);
                         registerStructure(selectedList);
@@ -542,20 +540,16 @@ public class Adapter {
                     }
                     return; // 这个return很必要，一段时间不看都不记得当初是怎么想的怎么写上去的了
                 }
-                boolean justReturn = false;
-
                 boolean[] hasSubTreeNodes = new boolean[2];
                 hasSubTreeNodes[0] = s.startsWith("if ") || s.startsWith("while ");
                 // 这时候t就是selectedTreeNode
                 String content = t.rectangle.getContent();
                 hasSubTreeNodes[1] = content.startsWith("if ") || content.startsWith("while ");
                 // 都没有子句或都有子句则直接返回，这是最简单的处理，不要想得太复杂
-                if (hasSubTreeNodes[0] == hasSubTreeNodes[1]) {
-                    justReturn = true;
-                }
                 // 之前是放在上面的if前面，这样tempRectangle.content就被覆盖了，导致普通指令修改为分支语句后会在doRepaint()时空指针
 //                t.rectangle.content = s;
-                if (justReturn) {
+                t.rectangle.setContent(s);
+                if (hasSubTreeNodes[0] == hasSubTreeNodes[1]) {
                     return;
                 }
                 break;
@@ -565,7 +559,6 @@ public class Adapter {
         remove();
         selectedTreeNode = preTreeNode;
         insert(s);
-        selectedTreeNode = savedTreeNode;
     }
 
     private TreeNode copiedTreeNode;

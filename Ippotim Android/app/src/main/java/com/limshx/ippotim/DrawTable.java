@@ -268,7 +268,7 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     private boolean inputted;
-    private Object input;
+    private String input;
 
     private void waitForInput() {
         while (!inputted) {
@@ -282,20 +282,14 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     @Override
-    public Object getInput() {
+    public String getInput() {
         post(new Runnable() {
             @Override
             public void run() {
-                InfoBox infoBox = new InfoBox("Input a value :", "Number", "String", new EditText(context), context) {
+                InfoBox infoBox = new InfoBox("Input a value :", "Cancel", "OK", new EditText(context), context) {
                     @Override
                     void onNegative() {
-                        try {
-                            input = Integer.parseInt(((EditText) getView()).getText().toString());
-                            inputted = true;
-                            getAlertDialog().cancel();
-                        } catch (NumberFormatException e) {
-                            Toast.makeText(context, "Not an integer!", Toast.LENGTH_SHORT).show();
-                        }
+                        adapter.stop();
                     }
                     @Override
                     void onPositive() {
@@ -303,7 +297,7 @@ public class DrawTable extends View implements GraphicsOperations {
                         inputted = true;
                     }
                 };
-                infoBox.showDialog(false, true);
+                infoBox.showDialog();
             }
         });
         waitForInput();
