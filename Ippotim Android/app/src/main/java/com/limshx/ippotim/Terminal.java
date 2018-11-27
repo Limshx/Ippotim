@@ -135,14 +135,14 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                     ScrollView scrollView = new ScrollView(context);
                     scrollView.addView(textView);
                     updateTextView();
-                    new InfoBox(null, "OK", "Cancel", scrollView, context) {
+                    new InfoBox(null, "Cancel", "OK", scrollView, context) {
                         @Override
-                        void onPositive() {
+                        void onNegative() {
 
                         }
 
                         @Override
-                        void onNegative() {
+                        void onPositive() {
 
                         }
                     }.showDialog();
@@ -192,7 +192,7 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                 stringBuilder.append("\n");
             }
         }
-        textView.append(stringBuilder.deleteCharAt(stringBuilder.length()- 1));
+        textView.append(stringBuilder.deleteCharAt(stringBuilder.length() - 1));
     }
 
     private void updateLinesCount() {

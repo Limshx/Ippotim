@@ -61,6 +61,7 @@ class Main extends JFrame {
             File file = jFileChooser.getSelectedFile();
             if (null != file) {
                 openedFile = file;
+                homeDirectory = openedFile.getParent() + "/";
                 JOptionPane.showMessageDialog(null,"Imported \"" + openedFile.getName() + "\"");
                 drawTable.adapter.getCodeFromXml(openedFile);
                 drawTable.doRepaint();
@@ -146,7 +147,7 @@ class Main extends JFrame {
         });
         jMenuItems[5].addActionListener(actionEvent -> {
             if (drawTable.adapter.hasSelectedTreeNode()) {
-                drawTable.adapter.delete();
+                drawTable.adapter.remove();
                 drawTable.doRepaint();
             } else {
                 JOptionPane.showMessageDialog(null, "Please select a rectangle first!");

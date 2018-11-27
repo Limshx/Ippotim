@@ -33,7 +33,7 @@ class Rectangle {
 
     void setContent(String s) {
         content = s;
-        pixelWidth = Adapter.graphicsOperation.getTextLength(content, fontSize);
+        pixelWidth = Adapter.graphicsOperations.getTextLength(content, fontSize);
         pixelWidth = pixelWidth < width ? width : pixelWidth;
     }
 
@@ -42,8 +42,8 @@ class Rectangle {
     }
 
     void draw() {
-        Adapter.graphicsOperation.fillRect(x, y, pixelWidth, height, color.rectangleColor);
-        Adapter.graphicsOperation.drawRect(x, y, pixelWidth, height);
-        Adapter.graphicsOperation.drawString(content, x, y + height * 4 / 5, color.stringColor);
+        Adapter.graphicsOperations.fillRect(x, y, pixelWidth, height, color.rectangleColor);
+        Adapter.graphicsOperations.drawRect(x, y, pixelWidth, height);
+        Adapter.graphicsOperations.drawString(content, x, y + height * 4 / 5, color.stringColor);
     }
 }

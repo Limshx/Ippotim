@@ -2,9 +2,10 @@ package Kernel;
 
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Objects;
 
 class Executor {
-    private GraphicsOperation graphicsOperation;
+    private GraphicsOperations graphicsOperations;
 
     // 集合变量
     private HashMap<String, Instance> instances = new HashMap<>();
@@ -22,8 +23,8 @@ class Executor {
     boolean doBreak = false;
     private boolean doContinue = false;
 
-    Executor(GraphicsOperation graphicsOperation, HashMap<String, LinkedList<TreeNode>> structures, HashMap<String, String> functionNameToParameters, HashMap<String, LinkedList<TreeNode>> functions) {
-        this.graphicsOperation = graphicsOperation;
+    Executor(GraphicsOperations graphicsOperations, HashMap<String, LinkedList<TreeNode>> structures, HashMap<String, String> functionNameToParameters, HashMap<String, LinkedList<TreeNode>> functions) {
+        this.graphicsOperations = graphicsOperations;
         this.structures = structures;
         this.functionNameToParameters = functionNameToParameters;
         this.functions = functions;
@@ -230,7 +231,7 @@ class Executor {
                     for (int i = 1; i < command.elements.size(); i++) {
                         Instance instance = getInstance(instances, command.elements.get(i));
                         if (instance != null) {
-                            setValue(instance, graphicsOperation.getInput());
+                            setValue(instance, graphicsOperations.getInput());
                         }
                     }
                     break;
@@ -251,7 +252,7 @@ class Executor {
                         // 当output单独成句之不接任何参数，就是输出换行符，这个设计简直巧夺天工。
                         stringBuilder.append("\n");
                     }
-                    graphicsOperation.appendText(stringBuilder.toString());
+                    graphicsOperations.appendText(stringBuilder.toString());
                     break;
                 }
                 case IF: {
@@ -332,17 +333,22 @@ class Executor {
             if ('"' == s.charAt(i)) {
                 hasQuote = !hasQuote;
             }
+            // 处理双引号内出现小括号和中括号的情况，双引号内限制为不允许出现双引号了之不支持转义字符。
+            // 字符串中允许出现任意字符，不设转义的话根本无法处理。像说英文双引号不区分左右无法像括号那样配对处理吧，好，我让你字符串用大括号括起来，之类似{XX OO}，那你字符串内部就是不能出现大括号了吧，那就没必要与大流相悖了。
+            // 这样在低层级修补漏洞是很低效的，需要从文法上着手。
+            if (hasQuote) {
+                continue;
+            }
             if ('(' == s.charAt(i)) {
                 match[0] += 1;
             } else if (')' == s.charAt(i)) {
                 match[0] -= 1;
-            }
-            if ('[' == s.charAt(i)) {
+            } else if ('[' == s.charAt(i)) {
                 match[1] += 1;
             } else if (']' == s.charAt(i)) {
                 match[1] -= 1;
             }
-            if (0 == match[0] && 0 == match[1] && !hasQuote) {
+            if (0 == match[0] && 0 == match[1]) {
                 return i + 1;
             }
         }
@@ -365,11 +371,8 @@ class Executor {
                     if ('?' == s.charAt(nextStart)) {
                         return "string";
                     }
-                    if ('.' == s.charAt(nextStart)) {
-                        return "instance";
-                    }
                 } else if (0 == start) {
-                    // 主体在一组小括号里面，这就要求非number类型的变量不能放在小括号内。现在是string类型的也可以，毕竟基本类型之间可以互相转换，那就是非基本数据类型的变量不能了。首尾分别是左右括号主体却并非在小括号里的情况是类似(s).(s)或(s)&&(s)或(s)*(s)，其中布尔表达式不直接调用本函数，中间的数字运算符在上面已经判断过了。
+                    // 主体在一组小括号里面，这就要求非number类型的变量不能放在小括号内。首尾分别是左右括号主体却并非在小括号里的情况是类似(s).(s)或(s)&&(s)或(s)*(s)，其中布尔表达式不直接调用本函数，中间的数字运算符在上面已经判断过了。
                     if ('(' == s.charAt(0)) {
                         return "number";
                     }
@@ -411,12 +414,12 @@ class Executor {
         instance[1] = getInstance(instances, parameters[1]);
         if (null != instance[0] && null != instance[1]) {
             if (!instance[0].type.equals("void") && !instance[1].type.equals("void")) {
-                return instance[0].elements.equals(instance[1].elements);
+                return Objects.equals(instance[0].elements, instance[1].elements);
             } else {
-                return getValue(instance[0]).equals(getValue(instance[1]));
+                return Objects.equals(getValue(instance[0]), getValue(instance[1]));
             }
         } else {
-            return getValue(instances, parameters[0]).equals(getValue(instances, parameters[1]));
+            return Objects.equals(getValue(instances, parameters[0]), getValue(instances, parameters[1]));
         }
     }
 

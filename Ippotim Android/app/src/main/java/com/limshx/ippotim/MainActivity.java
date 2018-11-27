@@ -126,26 +126,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 items[i] = files[i].getName();
             }
             selectedItem = 0;
-            InfoBox infoBox = new InfoBox(null, "OK", "Cancel", null, context) {
+            InfoBox infoBox = new InfoBox(null, "Cancel", "OK", null, context) {
+                @Override
+                void onNegative() {
+
+                }
+
                 @Override
                 void onPositive() {
                     openedFile = new File(homeDirectory + items[selectedItem]);
-                    new InfoBox("Import \"" + openedFile.getName() + "\" ?", "OK", "Cancel", null, context) {
-                        @Override
-                        void onPositive() {
-                            operateFile();
-                        }
-
+                    new InfoBox("Import \"" + openedFile.getName() + "\" ?", "Cancel", "OK", null, context) {
                         @Override
                         void onNegative() {
 
                         }
+
+                        @Override
+                        void onPositive() {
+                            operateFile();
+                        }
                     }.showDialog();
-                }
-
-                @Override
-                void onNegative() {
-
                 }
             };
             infoBox.getAdb().setSingleChoiceItems(items, selectedItem, new DialogInterface.OnClickListener() {
@@ -205,22 +205,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }.selectFile();
                 break;
             case R.id.Export:
-                InfoBox infoBox = new InfoBox("Input a file name :", "OK", "Cancel", new EditText(context), context) {
+                InfoBox infoBox = new InfoBox("Input a file name :", "Cancel", "OK", new EditText(context), context) {
+                    @Override
+                    void onNegative() {
+
+                    }
+
                     @Override
                     void onPositive() {
                         String fileName = ((EditText) getView()).getText().toString();
                         if (!fileName.equals("")) {
                             openedFile = new File(homeDirectory + fileName);
                             if (openedFile.exists()) {
-                                new InfoBox("File \"" + openedFile.getName() + "\" exists, overwrite it?", "OK", "Cancel", null, context) {
-                                    @Override
-                                    void onPositive() {
-                                        exportToFile();
-                                    }
-
+                                new InfoBox("File \"" + openedFile.getName() + "\" exists, overwrite it?", "Cancel", "OK", null, context) {
                                     @Override
                                     void onNegative() {
 
+                                    }
+
+                                    @Override
+                                    void onPositive() {
+                                        exportToFile();
                                     }
                                 }.showDialog();
                             } else {
@@ -230,11 +235,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             Toast.makeText(context, "The name of file can not be empty!", Toast.LENGTH_SHORT).show();
                         }
                     }
-
-                    @Override
-                    void onNegative() {
-
-                    }
                 };
                 infoBox.showDialog();
                 if (openedFile != null) {
@@ -242,31 +242,31 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
                 break;
             case R.id.Clear:
-                new InfoBox("Close current project without saving?", "OK", "Cancel", null, context) {
-                    @Override
-                    void onPositive() {
-                        clear();
-                    }
-
+                new InfoBox("Close current project without saving?", "Cancel", "OK", null, context) {
                     @Override
                     void onNegative() {
 
+                    }
+
+                    @Override
+                    void onPositive() {
+                        clear();
                     }
                 }.showDialog();
                 break;
             case R.id.Delete:
                 if (null != openedFile) {
-                    new InfoBox("Delete \"" + openedFile.getName() + "\" ?", "OK", "Cancel", null, context) {
+                    new InfoBox("Delete \"" + openedFile.getName() + "\" ?", "Cancel", "OK", null, context) {
+                        @Override
+                        void onNegative() {
+
+                        }
+
                         @Override
                         void onPositive() {
                             // 跟Clear功能有重叠似乎不够优雅，不过这也是没有办法的事。
                             deleteFile();
                             clear();
-                        }
-
-                        @Override
-                        void onNegative() {
-
                         }
                     }.showDialog();
                 } else {
@@ -295,7 +295,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 terminal = new Terminal(context);
                 terminal.adapter = drawTable.adapter;
                 drawTable.terminal = terminal;
-                InfoBox infoBox = new InfoBox(null, "OK", "Jump", terminal, context) {
+                InfoBox infoBox = new InfoBox(null, "Jump", "OK", terminal, context) {
                     @Override
                     void onPositive() {
                     }
@@ -307,25 +307,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             return;
                         }
 
-                        terminal.infoBox = new InfoBox("0~" + terminal.getPagesCount() + " :", "OK", "Cancel", new EditText(context), context) {
-                            @Override
-                            void onPositive() {
-                                try {
-                                    terminal.jumpToPage(Integer.parseInt(((EditText) getView()).getText().toString()));
-                                } catch (NumberFormatException e) {
-                                    Toast.makeText(context, "Please input an integer.", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-
+                        terminal.infoBox = new InfoBox("0~" + terminal.getPagesCount() + " :", "Cancel", "OK", new EditText(context), context) {
                             @Override
                             void onNegative() {
 
                             }
+
+                            @Override
+                            void onPositive() {
+                                try {
+                                    terminal.jumpToPage(Integer.parseInt(((EditText) getView()).getText().toString()));
+                                    getAlertDialog().cancel();
+                                } catch (NumberFormatException e) {
+                                    Toast.makeText(context, "Please input an integer.", Toast.LENGTH_SHORT).show();
+                                }
+                            }
                         };
-                        terminal.infoBox.showDialog();
+                        terminal.infoBox.showDialog(true, false);
                     }
                 };
-                infoBox.showDialog(false);
+                infoBox.showDialog(false, true);
                 return true;
             }
         });
@@ -388,7 +389,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 if (drawTable.adapter.hasSelectedTreeNode()) {
-                    drawTable.adapter.delete();
+                    drawTable.adapter.remove();
                     drawTable.doRepaint();
                 } else {
                     Toast.makeText(context, "Please select a rectangle first!", Toast.LENGTH_SHORT).show();

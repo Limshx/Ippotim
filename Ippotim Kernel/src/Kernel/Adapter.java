@@ -29,7 +29,7 @@ public class Adapter {
     static double scale;
     private TreeNode selectedTreeNode;
     private Vector<Line> vectorLine = new Vector<>();
-    static GraphicsOperation graphicsOperation; // 本来是static GraphicsOperation drawTable = new DrawTable();之实际用不到所有的DrawTable的方法与属性，通过接口或抽象类可以完美解耦合，这就是函数指针、接口、抽象类之类的真正奥义
+    static GraphicsOperations graphicsOperations; // 本来是static GraphicsOperations drawTable = new DrawTable();之实际用不到所有的DrawTable的方法与属性，通过接口或抽象类可以完美解耦合，这就是函数指针、接口、抽象类之类的真正奥义
     private Executor executor;
 
     private HashMap<String, LinkedList<TreeNode>> structures = new HashMap<>();
@@ -47,8 +47,8 @@ public class Adapter {
         Line.updateSize();
     }
 
-    public Adapter(GraphicsOperation g, int x, int y, double s) {
-        graphicsOperation = g;
+    public Adapter(GraphicsOperations g, int x, int y, double s) {
+        graphicsOperations = g;
         clearAll();
         setScale(1 / s);
         // main函数也并入函数集合
@@ -75,7 +75,7 @@ public class Adapter {
     }
 
     public void run() {
-        executor = new Executor(graphicsOperation, structures, functionNameToParameters, functions);
+        executor = new Executor(graphicsOperations, structures, functionNameToParameters, functions);
         for (LinkedList<TreeNode> list : lists) {
             for (TreeNode treeNode : Executor.getDataList(list)) {
                 treeNode.updateElements(executor);
@@ -86,6 +86,7 @@ public class Adapter {
             executor.run(Executor.getDataList(functions.get("")));
             // debug就是研究非预期行为的成因，看代码推敲是不够的，还需要有显示中间数据的手段
         } catch (Exception e) {
+            graphicsOperations.showMessage(e.toString());
             e.printStackTrace();
         }
     }
@@ -300,6 +301,7 @@ public class Adapter {
 
     public void createFunction(String s) {
         if (s.equals("")) {
+            graphicsOperations.showMessage("Function name cannot be empty!");
             return;
         }
         Rectangle.currentGroupColor = colors[2];
@@ -320,6 +322,7 @@ public class Adapter {
 
     public void createStructure(String s) {
         if (s.equals("")) {
+            graphicsOperations.showMessage("Structure name cannot be empty!");
             return;
         }
         Rectangle.currentGroupColor = colors[0];
@@ -405,6 +408,7 @@ public class Adapter {
     // 先像点带加号的矩形添加新矩形那样新建一个矩形，然后做一次轮换把新建矩形换到指定位置，包括矩形链表和TreeNode链表。要在第一个矩形上面添加矩形，只能把第一个矩形设为头节点，比如指令链表的头节点为“main”，结构定义和集合运算定义的头节点自然就分别是结构名和参数列表，最后处理时略过即可
     public void insert(String s) {
         if (selectedTreeNode.rectangle.getContent().equals("else")) {
+            graphicsOperations.showMessage("Cannot create a statement here!");
             selectedTreeNode = null;
         }
         if (s.equals("else")) {
@@ -419,6 +423,7 @@ public class Adapter {
             // else语句只能点击“+”矩形新建，不能由插入、修改来
             canCreateElse = canCreateElse && doCreateMember;
             if (!canCreateElse) {
+                graphicsOperations.showMessage("Cannot create an else statement here!");
                 selectedTreeNode = null;
             }
         }
@@ -431,7 +436,7 @@ public class Adapter {
         if (s.equals("")) {
             selectedTreeNode = null;
         }
-        if (selectedTreeNode == null) { // 想要通知图形界面没选中矩形，除了可以在GraphicsOperation新增一个发送信息的方法，还可以把insert()的返回值设为int，返回约定好的比如-1表示未选中矩形，这里没有判断tempRectangle.content.startsWith("else ")也无妨
+        if (null == selectedTreeNode) { // 想要通知图形界面没选中矩形，除了可以在GraphicsOperation新增一个发送信息的方法，还可以把insert()的返回值设为int，返回约定好的比如-1表示未选中矩形，这里没有判断tempRectangle.content.startsWith("else ")也无妨
             return;
         }
 
@@ -463,10 +468,7 @@ public class Adapter {
     }
 
     // 选中矩形后菜单项选删除，先删除选中的矩形所属TreeNode及其子TreeNode之包括从矩形链表中删除TreeNode对应的矩形，然后把该组TreeNode后面的TreeNode的矩形的y值减去一个矩形高
-    public void delete() {
-        if (null == selectedList) {
-            return;
-        }
+    public void remove() {
         boolean upForMoveDown = false;
         for (int i = 0; i < selectedList.size(); i++) { // for (TreeNode t : selectedList) 会java.util.ConcurrentModificationException
             TreeNode t = selectedList.get(i);
@@ -476,6 +478,7 @@ public class Adapter {
             if (t.equals(selectedTreeNode)) {
                 // 特殊结点删除作特殊处理
                 if (t.rectangle.getContent().equals("")) { // 子句的第一个矩形不允许删除
+                    graphicsOperations.showMessage("Cannot remove the statement!");
                     break;
                 } else if (t.equals(selectedList.getFirst())) { // 全部删除，包括结构定义、函数定义
                     if (t.rectangle.color.rectangleColor == Color.RED) { // 说明是结构定义
@@ -516,7 +519,8 @@ public class Adapter {
     // 选中矩形后长按即弹出输入窗口让更新内容，如果是改了像if、else、while这样有子句者则删除子句，或者为了防止误触还是设置一个modify菜单项。本来是可以直接改的，不过改变等价于删除加添加，只是这样删除第一个矩形的时候就难了，可以在TreeNode链表再添加一个不关联矩形的头结点，只是第一个矩形其实没有删除的必要
     public void modify(String s) {
         // 不允许修改main函数和子句的头结点，不允许修改或修改为else语句或“”
-        if (null == selectedList || selectedTreeNode.rectangle.getContent().equals("else") || selectedTreeNode.rectangle.getContent().equals("") || s.equals("else") || s.equals("")) {
+        if (selectedTreeNode.rectangle.getContent().equals("else") || selectedTreeNode.rectangle.getContent().equals("") || s.equals("else") || s.equals("")) {
+            graphicsOperations.showMessage("Cannot modify or change to an else or empty statement!");
             selectedTreeNode = null;
             return;
         }
@@ -558,7 +562,7 @@ public class Adapter {
             }
             preTreeNode = t;
         }
-        delete();
+        remove();
         selectedTreeNode = preTreeNode;
         insert(s);
         selectedTreeNode = savedTreeNode;
@@ -581,17 +585,15 @@ public class Adapter {
     }
 
     public void copy() {
-        if (null != selectedTreeNode) {
-            if (selectedTreeNode.equals(selectedList.getFirst()) || selectedTreeNode.equals(selectedList.getLast())) {
-                return;
-            }
-            Rectangle.currentGroupColor = selectedTreeNode.rectangle.color;
-            copiedTreeNode = selectedTreeNode;
+        if (selectedTreeNode.equals(selectedList.getFirst()) || selectedTreeNode.equals(selectedList.getLast())) {
+            return;
         }
+        Rectangle.currentGroupColor = selectedTreeNode.rectangle.color;
+        copiedTreeNode = selectedTreeNode;
     }
 
     public void paste() {
-        if (null != selectedTreeNode && null != copiedTreeNode) {
+        if (null != copiedTreeNode) {
             copiedTreeNode = copy(copiedTreeNode);
             insert(copiedTreeNode, true);
         }
@@ -623,7 +625,7 @@ public class Adapter {
                     if (currentTreeNode.rectangle.getContent().equals("+")) {
                         doCreateMember = true;
                         selectedTreeNode = preTreeNode;
-                        graphicsOperation.create("Member");
+                        graphicsOperations.create("Member");
                     }
                     lists.remove(list);
                     lists.add(list);

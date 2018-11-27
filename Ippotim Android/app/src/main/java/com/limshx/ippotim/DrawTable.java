@@ -1,7 +1,7 @@
 package com.limshx.ippotim;
 
 import Kernel.Adapter;
-import Kernel.GraphicsOperation;
+import Kernel.GraphicsOperations;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -15,7 +15,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
-public class DrawTable extends View implements GraphicsOperation {
+public class DrawTable extends View implements GraphicsOperations {
     DisplayMetrics displayMetrics = new DisplayMetrics();
     private Context context;
     private float baseValue = 0;
@@ -130,7 +130,7 @@ public class DrawTable extends View implements GraphicsOperation {
         return super.onTouchEvent(motionEvent);
     }
 
-    private void initKernel(GraphicsOperation graphicsOperation) {
+    private void initKernel(GraphicsOperations graphicsOperation) {
         int px = getMeasuredWidth();
         int py = getMeasuredHeight();
         double scale = getScale();
@@ -174,7 +174,13 @@ public class DrawTable extends View implements GraphicsOperation {
                 title = null;
                 break;
         }
-        InfoBox infoBox = new InfoBox(title, "OK", "Cancel", new EditText(context), context) {
+        InfoBox infoBox = new InfoBox(title, "Cancel", "OK", new EditText(context), context) {
+            @Override
+            void onNegative() {
+                if (type.equals("Member")) {
+                    adapter.insert("");
+                }
+            }
             @Override
             void onPositive() {
                 String input = ((EditText) getView()).getText().toString();
@@ -195,18 +201,21 @@ public class DrawTable extends View implements GraphicsOperation {
                 }
                 doRepaint();
             }
-
-            @Override
-            void onNegative() {
-                if (type.equals("Member")) {
-                    adapter.insert("");
-                }
-            }
         };
         infoBox.showDialog();
         if (type.equals("Modify")) {
             ((EditText) infoBox.getView()).setText(adapter.getRectangleContent());
         }
+    }
+
+    @Override
+    public void showMessage(final String s) {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(context, s, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     void doRepaint() {
@@ -277,13 +286,7 @@ public class DrawTable extends View implements GraphicsOperation {
         post(new Runnable() {
             @Override
             public void run() {
-                InfoBox infoBox = new InfoBox("Input a value :", "String", "Number", new EditText(context), context) {
-                    @Override
-                    void onPositive() {
-                        input = ((EditText) getView()).getText().toString();
-                        inputted = true;
-                    }
-
+                InfoBox infoBox = new InfoBox("Input a value :", "Number", "String", new EditText(context), context) {
                     @Override
                     void onNegative() {
                         try {
@@ -294,8 +297,13 @@ public class DrawTable extends View implements GraphicsOperation {
                             Toast.makeText(context, "Not an integer!", Toast.LENGTH_SHORT).show();
                         }
                     }
+                    @Override
+                    void onPositive() {
+                        input = ((EditText) getView()).getText().toString();
+                        inputted = true;
+                    }
                 };
-                infoBox.showDialog(false);
+                infoBox.showDialog(false, true);
             }
         });
         waitForInput();

@@ -24,7 +24,7 @@ class Line {
         int yFrom = from.y + Rectangle.height / 2;
         int xTo = to.x + Rectangle.width / 2;
         int yTo = to.y + Rectangle.height / 2;
-        Adapter.graphicsOperation.drawLine(xFrom, yFrom, xTo, yTo);
+        Adapter.graphicsOperations.drawLine(xFrom, yFrom, xTo, yTo);
         int xa, ya, xb, yb;
         int distance = Math.abs(distance(xFrom, yFrom, xTo, yTo));
         xa = xTo + arrowSize * ((xFrom - xTo) + (yFrom - yTo) / 2) / distance;
@@ -32,7 +32,7 @@ class Line {
         xb = xTo + arrowSize * ((xFrom - xTo) - (yFrom - yTo) / 2) / distance;
         yb = yTo + arrowSize * ((yFrom - yTo) + (xFrom - xTo) / 2) / distance;
 
-        Adapter.graphicsOperation.drawLine(xTo, yTo, xa, ya);
-        Adapter.graphicsOperation.drawLine(xTo, yTo, xb, yb);
+        Adapter.graphicsOperations.drawLine(xTo, yTo, xa, ya);
+        Adapter.graphicsOperations.drawLine(xTo, yTo, xb, yb);
     }
 }

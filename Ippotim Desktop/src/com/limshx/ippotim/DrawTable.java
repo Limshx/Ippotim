@@ -1,7 +1,7 @@
 package com.limshx.ippotim;
 
 import Kernel.Adapter;
-import Kernel.GraphicsOperation;
+import Kernel.GraphicsOperations;
 
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
@@ -23,7 +23,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 
-class DrawTable extends JPanel implements GraphicsOperation {
+class DrawTable extends JPanel implements GraphicsOperations {
     Adapter adapter;
     int windowSize = 600;
     private Graphics g;
@@ -49,7 +49,7 @@ class DrawTable extends JPanel implements GraphicsOperation {
                 s = null;
                 break;
         }
-        if (s != null) {
+        if (null != s) {
             switch (type) {
                 case "Function":
                     adapter.createFunction(s);
@@ -72,6 +72,11 @@ class DrawTable extends JPanel implements GraphicsOperation {
                 adapter.insert("");
             }
         }
+    }
+
+    @Override
+    public void showMessage(String s) {
+        JOptionPane.showMessageDialog(null, s);
     }
 
     void doRepaint() {
