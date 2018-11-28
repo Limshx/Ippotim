@@ -74,14 +74,17 @@ public class Adapter {
         registerFunction(commands);
     }
 
-    public void run() {
+    private void updateElements() {
         executor = new Executor(graphicsOperations, structures, functionNameToParameters, functions);
         for (LinkedList<TreeNode> list : lists) {
             for (TreeNode treeNode : Executor.getDataList(list)) {
                 treeNode.updateElements(executor);
             }
         }
+    }
 
+    public void run() {
+        updateElements();
         try {
             executor.run(Executor.getDataList(functions.get("")));
             // debug就是研究非预期行为的成因，看代码推敲是不够的，还需要有显示中间数据的手段
@@ -253,6 +256,8 @@ public class Adapter {
         } catch (ParserConfigurationException | IOException | SAXException e) {
             return false;
         }
+
+        updateElements();
 
         return true;
     }
