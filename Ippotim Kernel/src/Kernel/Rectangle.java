@@ -26,9 +26,9 @@ class Rectangle {
         fontSize = (int) (defaultFontSize * Adapter.scale);
     }
 
-    void moveTo(int xv, int yv) {
-        this.x += xv;
-        this.y += yv;
+    void moveTo(int x, int y) {
+        this.x += x;
+        this.y += y;
     }
 
     void setContent(String s) {

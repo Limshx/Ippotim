@@ -52,7 +52,7 @@ class Main extends JFrame {
 
         JMenuBar jMenuBar = new JMenuBar();
         JMenu jMenu;
-        JMenuItem[] jMenuItems = new JMenuItem[6];
+        JMenuItem[] jMenuItems = new JMenuItem[7];
         jMenu = new JMenu("File");
         jMenuItems[0] = new JMenuItem("Import");
         jMenuItems[0].addActionListener(actionEvent -> {
@@ -97,6 +97,7 @@ class Main extends JFrame {
         jMenuItems[3] = new JMenuItem("Copy");
         jMenuItems[4] = new JMenuItem("Paste");
         jMenuItems[5] = new JMenuItem("Remove");
+        jMenuItems[6] = new JMenuItem("Sort");
         JScrollPane jScrollPane = new JScrollPane(drawTable.jTextArea);
         drawTable.jTextArea.setEditable(false);
         JFrame jFrame = new JFrame("Output");
@@ -153,18 +154,23 @@ class Main extends JFrame {
                 JOptionPane.showMessageDialog(null, "Please select a rectangle first!");
             }
         });
+        jMenuItems[6].addActionListener(actionEvent -> {
+            try {
+                int capacity = Integer.parseInt(JOptionPane.showInputDialog("Input capacity :", "0"));
+                drawTable.adapter.sort(capacity);
+                drawTable.doRepaint();
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(null, "Not an integer!");
+            }
+        });
         jMenu.add(jMenuItems[0]);
         jMenu.add(jMenuItems[1]);
         jMenu.add(jMenuItems[2]);
         jMenu.add(jMenuItems[3]);
         jMenu.add(jMenuItems[4]);
         jMenu.add(jMenuItems[5]);
+        jMenu.add(jMenuItems[6]);
         jMenuBar.add(jMenu);
-//        jMenu = new JMenu("New");
-//        JMenuItem jMenuItem = new JMenuItem("Function");
-//        jMenuItem.addActionListener(actionEvent -> drawTable.create("Function"));
-//        jMenu.add(jMenuItem);
-//        jMenuBar.add(jMenu);
         drawRect.setJMenuBar(jMenuBar);
 
         drawRect.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);

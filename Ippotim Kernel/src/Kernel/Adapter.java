@@ -24,8 +24,8 @@ import java.util.ListIterator;
 import java.util.Vector;
 
 public class Adapter {
-    private LinkedList<TreeNode> selectedList;
     private int x, y;
+    private LinkedList<TreeNode> selectedList;
     static double scale;
     private TreeNode selectedTreeNode;
     private Vector<Line> vectorLine = new Vector<>();
@@ -45,6 +45,11 @@ public class Adapter {
         scale = s;
         Rectangle.updateSize();
         Line.updateSize();
+    }
+
+    public void setXY(int x, int y) {
+        this.x = x;
+        this.y = y;
     }
 
     public Adapter(GraphicsOperations g, int x, int y, double s) {
@@ -67,11 +72,6 @@ public class Adapter {
 
         registerTreeNodeList(commands);
         registerFunction(commands);
-    }
-
-    public void setXY(int v0, int v1) {
-        x = v0;
-        y = v1;
     }
 
     public void run() {
@@ -351,7 +351,7 @@ public class Adapter {
         if (s.startsWith("if ") || s.equals("else") || s.startsWith("while ")) {
             LinkedList<TreeNode> linkedList = new LinkedList<>();
             treeNode.subTreeNodes = linkedList;
-            rectangle = new Rectangle("", rectangle.x + 2 * Rectangle.width, rectangle.y + Rectangle.height);
+            rectangle = new Rectangle("", rectangle.x + Rectangle.width, rectangle.y + Rectangle.height);
             TreeNode subTreeNode = new TreeNode();
             subTreeNode.rectangle = rectangle;
             treeNode.subTreeNodes.add(subTreeNode);
@@ -407,9 +407,21 @@ public class Adapter {
 
     // 先像点带加号的矩形添加新矩形那样新建一个矩形，然后做一次轮换把新建矩形换到指定位置，包括矩形链表和TreeNode链表。要在第一个矩形上面添加矩形，只能把第一个矩形设为头节点，比如指令链表的头节点为“main”，结构定义和集合运算定义的头节点自然就分别是结构名和参数列表，最后处理时略过即可
     public void insert(String s) {
+        boolean savedDoCreateMember = doCreateMember;
+        if (doCreateMember) {
+            doCreateMember = false;
+        }
+        if (Color.RED == selectedTreeNode.rectangle.color.rectangleColor) {
+            if (s.startsWith("if ") || s.equals("else") || s.startsWith("while")) {
+                graphicsOperations.showMessage("Cannot create such a statement here!");
+                selectedTreeNode = null;
+                return;
+            }
+        }
         if (selectedTreeNode.rectangle.getContent().equals("else")) {
             graphicsOperations.showMessage("Cannot create a statement here!");
             selectedTreeNode = null;
+            return;
         }
         if (s.equals("else")) {
             boolean canCreateElse = false;
@@ -421,22 +433,16 @@ public class Adapter {
                 }
             }
             // else语句只能点击“+”矩形新建，不能由插入、修改来
-            canCreateElse = canCreateElse && doCreateMember;
+            canCreateElse = canCreateElse && savedDoCreateMember;
             if (!canCreateElse) {
                 graphicsOperations.showMessage("Cannot create an else statement here!");
                 selectedTreeNode = null;
+                return;
             }
         }
-
-        if (doCreateMember) {
-            doCreateMember = false;
-        }
-
             // 将这个判断从下一个判断中提取出来是较好的选择，否则下一个判断是if (selectedRectangle == null || selectedRectangle.content.startsWith("else ") || s.equals(""))，大括号里面还要再进行一次if (s.equals(""))判断，这就有了重复代码，不优雅
         if (s.equals("")) {
             selectedTreeNode = null;
-        }
-        if (null == selectedTreeNode) { // 想要通知图形界面没选中矩形，除了可以在GraphicsOperation新增一个发送信息的方法，还可以把insert()的返回值设为int，返回约定好的比如-1表示未选中矩形，这里没有判断tempRectangle.content.startsWith("else ")也无妨
             return;
         }
 
@@ -481,9 +487,9 @@ public class Adapter {
                     graphicsOperations.showMessage("Cannot remove the statement!");
                     break;
                 } else if (t.equals(selectedList.getFirst())) { // 全部删除，包括结构定义、函数定义
-                    if (t.rectangle.color.rectangleColor == Color.RED) { // 说明是结构定义
+                    if (Color.RED == t.rectangle.color.rectangleColor) { // 说明是结构定义
                         unregisterStructure(selectedList);
-                    } else if (t.rectangle.color.rectangleColor == Color.YELLOW) { // 说明是函数定义
+                    } else if (Color.YELLOW == t.rectangle.color.rectangleColor) { // 说明是函数定义
                         unregisterFunction(selectedList);
                     }
                     // 要么是结构定义要么是函数定义，删不掉的是main函数和子句，在上一个判断中已经返回了
@@ -524,6 +530,12 @@ public class Adapter {
             selectedTreeNode = null;
             return;
         }
+        if (Color.RED == selectedTreeNode.rectangle.color.rectangleColor) {
+            if (s.startsWith("if ") || s.startsWith("while")) {
+                graphicsOperations.showMessage("Cannot create such a statement here!");
+                return;
+            }
+        }
         LinkedList<TreeNode> linkedList = selectedList;
         TreeNode preTreeNode = linkedList.getFirst();
         for (TreeNode t : linkedList) {
@@ -531,10 +543,10 @@ public class Adapter {
                 // 特殊结点删除作特殊处理
                 if (t.equals(linkedList.getFirst())) {
                     t.rectangle.setContent(s);
-                    if (t.rectangle.color.rectangleColor == Color.RED) { // 说明是结构定义
+                    if (Color.RED == t.rectangle.color.rectangleColor) { // 说明是结构定义
                         unregisterStructure(selectedList);
                         registerStructure(selectedList);
-                    } else if (t.rectangle.color.rectangleColor == Color.YELLOW) { // 说明是函数定义
+                    } else if (Color.YELLOW == t.rectangle.color.rectangleColor) { // 说明是函数定义
                         unregisterFunction(selectedList);
                         registerFunction(selectedList);
                     }
@@ -629,21 +641,79 @@ public class Adapter {
         }
     }
 
-    public void drag(int ex, int ey) {
+    private void moveList(LinkedList<TreeNode> list, int x, int y, boolean moveSubTreeNodes) {
+        for (TreeNode treeNode : list) {
+            treeNode.rectangle.moveTo(x - this.x, y - this.y);
+            if (moveSubTreeNodes && null != treeNode.subTreeNodes) {
+                moveList(treeNode.subTreeNodes, x, y, true);
+            }
+        }
+    }
+
+    public void drag(int x, int y) {
         if (null == selectedList) {
             for (LinkedList<TreeNode> list : lists) {
-                for (TreeNode treeNode : list) {
-                    treeNode.rectangle.moveTo(ex - x, ey - y);
-                }
+                moveList(list, x, y, false);
             }
         } else {
             LinkedList<TreeNode> list = selectedList;
-            for (TreeNode treeNode : list) {
-                treeNode.rectangle.moveTo(ex - x, ey - y);
+            moveList(list, x, y, true);
+        }
+        setXY(x, y);
+    }
+
+    private void sort(LinkedList<TreeNode> list, int targetX, int targetY) {
+        lists.remove(list);
+        lists.add(list);
+        Rectangle rectangle = list.getFirst().rectangle;
+        int x = this.x - rectangle.x + targetX;
+        int y = this.y - rectangle.y + targetY;
+        moveList(list, x, y, false);
+        for (TreeNode t : list) {
+            if (null != t.subTreeNodes) {
+                sort(t.subTreeNodes, t.rectangle.x + Rectangle.width, t.rectangle.y);
             }
         }
-        x = ex;
-        y = ey;
+    }
+
+    private int baseX;
+    private int baseY;
+    private void sort(HashMap<String, LinkedList<TreeNode>> hashMap, int capacity) {
+        int count = 0;
+        for (LinkedList<TreeNode> list : hashMap.values()) {
+            // 这是专门处理void的。
+            if (null == list) {
+                continue;
+            }
+            // 这是专门为main函数准备的，这里结构和函数一起处理了。
+            if (list.getFirst().rectangle.getContent().equals("")) {
+                sort(list, 0, 0);
+            } else {
+                sort(list, baseX, baseY);
+                baseY += Rectangle.height;
+                if (0 != capacity) {
+                    count += 1;
+                    if (count == capacity) {
+                        count = 0;
+                        Rectangle rectangle = lists.getLast().getFirst().rectangle;
+                        baseX = rectangle.x + rectangle.pixelWidth;
+                        baseY = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    public void sort(int capacity) {
+        baseX = Rectangle.width;
+        baseY = 0;
+        sort(structures, capacity);
+        if (0 != baseY) {
+            Rectangle rectangle = lists.getLast().getFirst().rectangle;
+            baseX = rectangle.x + rectangle.pixelWidth;
+            baseY = 0;
+        }
+        sort(functions, capacity);
     }
 
     public void doWheelRotation(int x, int y, double s) {
@@ -653,7 +723,6 @@ public class Adapter {
         setScale(scale / s);
 
         for (LinkedList<TreeNode> list : lists) {
-            int baseX, baseY;
             baseX = (int) (x + (list.getFirst().rectangle.x - x) / s);
             baseY = (int) (y + (list.getFirst().rectangle.y - y) / s);
 
@@ -686,15 +755,19 @@ public class Adapter {
             focusedTreeNode.rectangle.draw();
             focusedTreeNode.rectangle.color = color;
 
+            LinkedList<TreeNode> targetList = null;
+
             // 选中有子句的矩形后同时反色显示其子句的第一个矩形，便于查看
             if (focusedTreeNode.rectangle.getContent().startsWith("if ") || focusedTreeNode.rectangle.getContent().equals("else") || focusedTreeNode.rectangle.getContent().startsWith("while ")) {
+                targetList = focusedTreeNode.subTreeNodes;
                 focusedTreeNode.subTreeNodes.getFirst().rectangle.color = inverseColor;
                 focusedTreeNode.subTreeNodes.getFirst().rectangle.draw();
                 focusedTreeNode.subTreeNodes.getFirst().rectangle.color = color;
             }
 
-            // 选中函数调用语句所在的矩形后反色显示调用到的函数所在主句的第一个矩形，便于查看
+            // 选中函数调用语句所在的矩形后反色显示调用到的函数所在主句的第一个矩形，便于查看。
             if (null != focusedTreeNode.matchedFunction && !focusedTreeNode.matchedFunction.isEmpty()) {
+                targetList = focusedTreeNode.matchedFunction;
                 TreeNode functionHead = focusedTreeNode.matchedFunction.getFirst();
                 color = functionHead.rectangle.color;
                 inverseColor = new Color(color.stringColor, color.rectangleColor);
@@ -707,6 +780,7 @@ public class Adapter {
             // 选中定义语句所在的矩形后反色显示结构定义所在主句的第一个矩形，便于查看
             LinkedList<TreeNode> structure = null != focusedTreeNode.elements ? structures.get(focusedTreeNode.elements.get(0)) : null;
             if (null != structure) { // 本来是CommandType.DEFINE == selectedTreeNode.commandType，不过现在这样也好
+                targetList = structure;
                 TreeNode functionHead = structure.getFirst();
                 color = functionHead.rectangle.color;
                 inverseColor = new Color(color.stringColor, color.rectangleColor);
@@ -714,6 +788,11 @@ public class Adapter {
                 functionHead.rectangle.color = inverseColor;
                 functionHead.rectangle.draw();
                 functionHead.rectangle.color = color;
+            }
+
+            if (null != targetList) {
+                lists.remove(targetList);
+                lists.add(targetList);
             }
         }
     }

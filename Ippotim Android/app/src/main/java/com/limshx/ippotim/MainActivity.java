@@ -285,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
-        MenuItem[] menuItem = new MenuItem[6];
+        MenuItem[] menuItem = new MenuItem[7];
 
         menuItem[0] = menu.add(0, 0, 0, "Run");
         menuItem[0].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
@@ -319,7 +319,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                     terminal.jumpToPage(Integer.parseInt(((EditText) getView()).getText().toString()));
                                     getAlertDialog().cancel();
                                 } catch (NumberFormatException e) {
-                                    Toast.makeText(context, "Please input an integer.", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(context, "Not an integer!", Toast.LENGTH_SHORT).show();
                                 }
                             }
                         };
@@ -394,6 +394,34 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 } else {
                     Toast.makeText(context, "Please select a rectangle first!", Toast.LENGTH_SHORT).show();
                 }
+                return true;
+            }
+        });
+
+        menuItem[6] = menu.add(0, 0, 0, "Sort");
+        menuItem[6].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                InfoBox infoBox = new InfoBox("Input capacity :", "Cancel", "OK", new EditText(context), context) {
+                    @Override
+                    void onNegative() {
+
+                    }
+
+                    @Override
+                    void onPositive() {
+                        try {
+                            int capacity = Integer.parseInt(((EditText) getView()).getText().toString());
+                            getAlertDialog().cancel();
+                            drawTable.adapter.sort(capacity);
+                            drawTable.doRepaint();
+                        } catch (NumberFormatException e) {
+                            Toast.makeText(context, "Not an integer!", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                };
+                infoBox.showDialog(true, false);
+                ((EditText) infoBox.getView()).setText("0");
                 return true;
             }
         });
