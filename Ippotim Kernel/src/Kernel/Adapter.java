@@ -596,6 +596,8 @@ public class Adapter {
 
     public void copy() {
         if (selectedTreeNode.equals(selectedList.getFirst()) || selectedTreeNode.equals(selectedList.getLast())) {
+            copiedTreeNode = null;
+            graphicsOperations.showMessage("Cannot copy the head or the tail of a list!");
             return;
         }
         Rectangle.currentGroupColor = selectedTreeNode.rectangle.color;
@@ -606,6 +608,8 @@ public class Adapter {
         if (null != copiedTreeNode) {
             copiedTreeNode = copy(copiedTreeNode);
             insert(copiedTreeNode, true);
+        } else {
+            graphicsOperations.showMessage("Copy a statement first!");
         }
     }
 
@@ -681,8 +685,20 @@ public class Adapter {
         }
     }
 
+    private int getMaxXofList(LinkedList<TreeNode> list) {
+        int maxXofList = 0;
+        for (TreeNode t : list) {
+            int treeNodeX = t.rectangle.x + t.rectangle.pixelWidth;
+            int subTreeNodesX = null != t.subTreeNodes ? getMaxXofList(t.subTreeNodes) : 0;
+            int maxXofTreeNode = treeNodeX < subTreeNodesX ? subTreeNodesX : treeNodeX;
+            maxXofList = maxXofTreeNode < maxXofList ? maxXofList : maxXofTreeNode;
+        }
+        return maxXofList;
+    }
+
     private int baseX;
     private int baseY;
+    private LinkedList<TreeNode> lastList;
     private void sort(HashMap<String, LinkedList<TreeNode>> hashMap, int capacity) {
         int count = 0;
         for (LinkedList<TreeNode> list : hashMap.values()) {
@@ -691,17 +707,15 @@ public class Adapter {
                 continue;
             }
             // 这是专门为main函数准备的，这里结构和函数一起处理了。
-            if (list.getFirst().rectangle.getContent().equals("")) {
-                sort(list, 0, 0);
-            } else {
+            if (!list.getFirst().rectangle.getContent().equals("")) {
                 sort(list, baseX, baseY);
+                lastList = list;
                 baseY += Rectangle.height;
                 if (0 != capacity) {
                     count += 1;
                     if (count == capacity) {
                         count = 0;
-                        Rectangle rectangle = lists.getLast().getFirst().rectangle;
-                        baseX = rectangle.x + rectangle.pixelWidth;
+                        baseX = getMaxXofList(lastList);
                         baseY = 0;
                     }
                 }
@@ -710,12 +724,13 @@ public class Adapter {
     }
 
     public void sort(int capacity) {
-        baseX = Rectangle.width;
+        LinkedList<TreeNode> main = functions.get("");
+        sort(main, 0, 0);
+        baseX = getMaxXofList(functions.get(""));
         baseY = 0;
         sort(structures, capacity);
         if (0 != baseY) {
-            Rectangle rectangle = lists.getLast().getFirst().rectangle;
-            baseX = rectangle.x + rectangle.pixelWidth;
+            baseX = getMaxXofList(lastList);
             baseY = 0;
         }
         sort(functions, capacity);
