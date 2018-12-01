@@ -1,7 +1,5 @@
 package com.limshx.ippotim;
 
-import Kernel.Adapter;
-
 import javax.imageio.ImageIO;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -83,7 +81,7 @@ class Main extends JFrame {
         jMenuItems[2] = new JMenuItem("Clear");
         jMenuItems[2].addActionListener(actionEvent -> {
             openedFile = null;
-            drawTable.adapter = new Adapter(drawTable, drawTable.getWidth() / 2, drawTable.getHeight() / 2, 1);
+            drawTable.adapter.clear();
             drawTable.doRepaint();
         });
         jMenu.add(jMenuItems[0]);

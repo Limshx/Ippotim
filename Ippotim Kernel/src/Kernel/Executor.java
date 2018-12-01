@@ -5,56 +5,50 @@ import java.util.LinkedList;
 import java.util.Objects;
 
 class Executor {
-    private GraphicsOperations graphicsOperations;
-
-    // 集合变量
-    private HashMap<String, Instance> instances = new HashMap<>();
-
-    // 集合结构定义
-    private HashMap<String, LinkedList<TreeNode>> structures;
-
-    // 函数的参数类型序列到参数变量名的映射表
-    private HashMap<String, String> functionNameToParameters;
-
-    // 集合运算定义
-    private HashMap<String, LinkedList<TreeNode>> functions;
-
     boolean stop = false;
     boolean doBreak = false;
     private boolean doContinue = false;
-
-    Executor(GraphicsOperations graphicsOperations, HashMap<String, LinkedList<TreeNode>> structures, HashMap<String, String> functionNameToParameters, HashMap<String, LinkedList<TreeNode>> functions) {
-        this.graphicsOperations = graphicsOperations;
-        this.structures = structures;
-        this.functionNameToParameters = functionNameToParameters;
-        this.functions = functions;
-    }
+    // 集合变量
+    private HashMap<String, Instance> instances = new HashMap<>();
 
     // 变量结构
-    class Instance {
+    private class Instance {
         String type;
         Object name;
         LinkedList<Instance> elements;
         // 对数组的实现是在此设立一个数组用以存放数组的各下标上限，使用具体的数组元素时先看数组名是否在变量表中，在的话再看各下标是否大于0且小于其上限，符合要求了再看类似a[1][2]之具体数组元素是否在arrayElements变量表里，不在就加进去再用，在就直接用
-        HashMap<String, Instance> arrayElements = new HashMap<>();
+        HashMap<String, Instance> arrayElements;
+
+        // 这样就是说常量也是变量之是变量的特例，type为null，name为其值。
+        Instance() {}
+
+        // 内部类中私有构造函数似乎对宿主类可见
+        Instance(String type, String name) {
+            this(type, name, true);
+        }
 
         // 这里原来是Instance(String var0, String var1, boolean initElements)，想要在里面拿到matchedStructureOrFunction，传入一个TreeNode的话似乎不好处理，传入matchedStructureOrFunction的话似乎也不优雅，直接把initElements替换为matchedStructureOrFunction是一种很好的解决方案之改为Instance(String var0, String var1, List<TreeNode> elements)，不过这其实就是或者说都是TreeNode里的数据，所以直接Instance(TreeNode command)更好，然而果然还是要加上initElements防止死循环。不过getArrayInstance()里有非根据TreeNode新建Instance的需求，这样还是得细化参数。最终因为函数调用时新建Instance不好传入指向结构定义的链表，还是决定恢复成原来的设计。
         Instance(String type, String name, boolean initElements) {
             // type和name本来就是null，就不用开个else赋为null了，这是一种需要细心才能发现的优化。
             this.type = type;
             this.name = name;
-            if (initElements) {
+            this.arrayElements = new HashMap<>();
+            if ("void".equals(type)) {
+                // 基本数据类型的值设计为其唯一的元素且也是变量，暂时假装不是元素而已，这样是方便判断是不是有传统意义上的结构体元素
                 // 本来是结构体系定义有元素的则初始化elements，不过基本数据类型的值设计为其元素了，所以一起初始化
                 this.elements = new LinkedList<>();
-                LinkedList<TreeNode> elements = getDataList(structures.get(type));
-                if (null != elements) {
-                    for (TreeNode element : elements) {
-                        // 如果结构体元素中有基本数据类型元素，则初始化
-                        this.elements.add(new Instance(element.elements.get(0), element.elements.get(1), element.elements.get(0).equals("void")));
+                this.elements.add(new Instance());
+            } else {
+                if (initElements) {
+                    // 本来是结构体系定义有元素的则初始化elements，不过基本数据类型的值设计为其元素了，所以一起初始化
+                    this.elements = new LinkedList<>();
+                    LinkedList<TreeNode> elements = getDataList(Adapter.structures.get(type));
+                    if (null != elements) {
+                        for (TreeNode element : elements) {
+                            // 如果结构体元素中有基本数据类型元素，则初始化
+                            this.elements.add(new Instance(element.elements.get(0), element.elements.get(1), false));
+                        }
                     }
-                } else {
-                    // 基本数据类型的值设计为其唯一的元素且也是变量，暂时假装不是元素而已，这样是方便判断是不是有传统意义上的结构体元素
-                    this.elements.add(new Instance(null, null, false));
                 }
             }
         }
@@ -74,7 +68,7 @@ class Executor {
 //            }
             Instance instanceTemp = instance.arrayElements.get(nameOfArrayInstance);
             if (null == instanceTemp) {
-                Instance newInstance = new Instance(instance.type, nameOfArrayInstance, true);
+                Instance newInstance = new Instance(instance.type, nameOfArrayInstance);
                 instance.arrayElements.put(nameOfArrayInstance, newInstance);
                 instanceTemp = newInstance;
             }
@@ -171,7 +165,8 @@ class Executor {
             elementInstance = getInstance(instances, instance, elementName[0]);
         }
         // 在getArrayInstance()前判空就不用在getArrayInstance()里面判了，getArrayInstance()肯定不会返回空，这也是一种优化，如何优化是一门学问。
-        if (null == elementInstance) {
+        // 对elementInstance.type判空是说常量不能作为变量使用，之现在的设计是常量保存在type为空的变量中。
+        if (null == elementInstance || null == elementInstance.type) {
             return null;
         }
         return getArrayInstance(instances, elementInstance, elementName[2]);
@@ -217,7 +212,7 @@ class Executor {
                     // 处理类似Set set之类的变量定义，暂时设计为定义集合变量的时候即分配存储空间之Set set等价于Set set = new Set()
                     // 从1开始是因为0是结构名
                     for (int i = 1; i < command.elements.size(); i++) {
-                        Instance instance = new Instance(command.elements.get(0), command.elements.get(i), true);
+                        Instance instance = new Instance(command.elements.get(0), command.elements.get(i));
                         instances.put(command.elements.get(i), instance);
                     }
                     break;
@@ -227,17 +222,19 @@ class Executor {
                     break;
                 }
                 case INPUT: {
-                    // 从1开始是因为0是“input”
+                    // 从1开始是因为0是“input”。
+                    // input设计为赋值语句的手动模式，也即input后可接任意变量，用户输入的可以是任意表达式和或者说包括任意变量名。
                     for (int i = 1; i < command.elements.size(); i++) {
                         Instance instance = getInstance(instances, command.elements.get(i));
                         if (instance != null) {
-                            setValue(instance, getValue(instances, graphicsOperations.getInput()));
+                            setValue(instance, getValue(instances, Adapter.graphicsOperations.getInput()));
                         }
                     }
                     break;
                 }
                 case OUTPUT: {
                     // 前期先求把功能实现，越简单越好，不必强求强大精妙，过早优化是万恶之源，似己想要写操作系统也是想要一个可以扩展成足够强大的操作系统的教科书级的简易实现。
+                    // output设计为只是输出常量和void变量的语句，这样似乎就与input不是一路人或者说互为相反数或者说阴阳了。
                     StringBuilder stringBuilder = new StringBuilder();
                     if (command.elements.size() > 1) {
                         // 从1开始是因为0是“output”了，像这种以及case不加break等不合常规的行为都应添加注释或者说说明
@@ -252,14 +249,14 @@ class Executor {
                         // 当output单独成句之不接任何参数，就是输出换行符，这个设计简直巧夺天工。
                         stringBuilder.append("\n");
                     }
-                    graphicsOperations.appendText(stringBuilder.toString());
+                    Adapter.graphicsOperations.appendText(stringBuilder.toString());
                     break;
                 }
                 case IF: {
                     // 不管有没有else之子句最后一句是"else :"还是"+"，都是去头去尾
-                    LinkedList<TreeNode> listIf = getDataList(command.subTreeNodes);
+                    LinkedList<TreeNode> listIf = getDataList(command.list);
                     // 如果没有else，得到的就是null
-                    LinkedList<TreeNode> listElse = getDataList(command.subTreeNodes.get(command.subTreeNodes.size() - 1).subTreeNodes);
+                    LinkedList<TreeNode> listElse = getDataList(command.list.treeNodes.get(command.list.treeNodes.size() - 1).list);
                     HashMap<String, Instance> subInstances = new HashMap<>(instances);
 
                     if (isTrue(instances, command.elements.get(1))) {
@@ -270,8 +267,7 @@ class Executor {
                     break;
                 }
                 case WHILE: {
-                    LinkedList<TreeNode> listWhile;
-                    listWhile = getDataList(command.subTreeNodes);
+                    LinkedList<TreeNode> listWhile = getDataList(command.list);
                     HashMap<String, Instance> subInstances = new HashMap<>(instances);
                     while (isTrue(instances, command.elements.get(1))) {
                         run(subInstances, listWhile);
@@ -394,7 +390,7 @@ class Executor {
             String[] formalParameters = s.split(", ");
             for (int i = 0; i < formalParameters.length; i++) {
                 String[] typeAndName = formalParameters[i].split(" ");
-                Instance instanceFormal = new Instance(typeAndName[0], typeAndName[1], true);
+                Instance instanceFormal = new Instance(typeAndName[0], typeAndName[1]);
                 functionInstances.put(typeAndName[1], instanceFormal);
                 // 第0个是函数名，第1个开始是实参名
                 assign(instances, command.elements.get(i + 1), functionInstances, typeAndName[1]);
@@ -404,8 +400,8 @@ class Executor {
     }
 
     // 去掉首尾结点，即""与"+"与"else :"结点
-    static LinkedList<TreeNode> getDataList(LinkedList<TreeNode> list) {
-        return null != list ? new LinkedList<>(list.subList(1, list.size() - 1)) : null;
+    static LinkedList<TreeNode> getDataList(List list) {
+        return null != list ? new LinkedList<>(list.treeNodes.subList(1, list.treeNodes.size() - 1)) : null;
     }
 
     private boolean isTheSame(HashMap<String, Instance> instances, String[] parameters) {
@@ -678,16 +674,16 @@ class Executor {
 
     // 函数调用如果还是由变量类型序列确定的话，似乎得运行时才能够做到了。其实不需要，至少对于现在的设计而言，通过处理之前的定义语句即可。这里要注意的是：getCommandType()应当是面向一个TreeNode组的，毕竟main函数也是函数，而函数被设计成比较完美的沙盒机制。至于说使用传统的函数名设计，其实也要校验参数类型，所以直接砍掉函数名也是合理的。这个首先需要找到执行到函数调用语句前执行到的所有语句，可以倒推回去，先找到所在组的首结点，然后找到所在子句的主句，然后再找到主句所在的组的首结点，得到所有的定义语句；难在根据子句找主句。可以遍历vectorLine找到主句的矩形编号，然后遍历vectorRectangle找到组号。这样是可行的，但效率太低了，不如修改TreeNode定义，添加一个指向主句的指针，空间复杂度换时间复杂度。即便如此，对于每一个函数调用语句都回溯似乎也是不可忍受的，只能深度优先遍历之对于函数集合中的每一个函数进行深度优先遍历，这样指向前驱结点的指针preTreeNode也可以不要了。
     // 之所以要添加预编译就是想要去掉频繁查表的开销，然而还有1张表没有去掉，这就是变量表。变量表似乎不能通过预编译去掉，像C语言对于变量的处理或者说实现应该是借助各种寻址方式，其实变量都是由定义语句生成的，如此说来变量确实可以在预编译时
-    CommandType getCommandType(TreeNode command) {
+    static CommandType getCommandType(TreeNode command) {
         String fistElement = command.elements.get(0);
-        if (structures.containsKey(fistElement)) {
+        if (Adapter.structures.containsKey(fistElement)) {
             // 结构定义还是通过结构名查表得，不然函数调用的时候新建Instance不好传入指向结构定义的链表
             // command.matchedStructureOrFunction = setStructures.get(command.elements.get(0));
             return CommandType.DEFINE; // 定义语句需要查结构表，实际可以像函数调用那样处理之直接获取结构所在组号这样就不用查了，令结构所在组号为g，则预编译号可以设计成(-8-g)。不过只是得到组号的话还是要根据组号查表才能得到数据，这与根据结构名查表似乎没什么两样。除非将结构所在的组置为定义语句的子句，这样就还需要设置一个标志位表示该子句是临时的，第二次运行时执行本函数会检查该标志位，子句是临时的则先将子句置为null。这样也不用保存组号了，函数调用也应这样处理。其实这样也不好，最好是新增一个链表元素。由于不用保存组号了，这样就可以用enum保存语句类型了。
         }
-        if (functions.containsKey(fistElement)) {
-            command.elements.add(functionNameToParameters.get(fistElement));
-            command.matchedFunction = functions.get(fistElement);
+        if (Adapter.functions.containsKey(fistElement)) {
+            command.elements.add(Adapter.functionNameToParameters.get(fistElement));
+            command.matchedFunction = Adapter.functions.get(fistElement);
             return CommandType.FUNCTION_CALL;
         }
         if (3 == command.elements.size() && command.elements.get(1).equals("=")) {

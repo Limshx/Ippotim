@@ -13,6 +13,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -21,7 +23,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
     Adapter adapter;
     int windowSize = 600;
     private Graphics g;
-    private int fontSize = 32;
+    private Font font;
     JTextArea jTextArea = new JTextArea();
 
     public void create(String type) {
@@ -77,8 +79,8 @@ class DrawTable extends JPanel implements GraphicsOperations {
         repaint();
     }
 
-    public void drawRect(int x, int y, int width, int height) {
-        g.setColor(Color.black);
+    public void drawRect(int x, int y, int width, int height, int color) {
+        g.setColor(new Color(color));
         g.drawRect(x, y, width, height);
     }
 
@@ -93,7 +95,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
     }
 
     public void drawString(String str, int x, int y, int color) {
-        g.setFont(new Font("SERIF", Font.PLAIN, fontSize));
+        g.setFont(font);
         g.setColor(new Color(color));
         g.drawString(str, x, y);
     }
@@ -127,10 +129,10 @@ class DrawTable extends JPanel implements GraphicsOperations {
     }
 
     @Override
-    public int getTextLength(String s, int fontSize) {
+    public int getPixelWidth(String s, int fontSize) {
 //        return (float) new Font("圆体", Font.PLAIN, (int) fontSize).getStringBounds(s, ((Graphics2D) g).getFontRenderContext()).getWidth();
-        this.fontSize = fontSize;
-        g.setFont(new Font("SERIF", Font.PLAIN, fontSize));
+        font = new Font("SERIF", Font.PLAIN, fontSize);
+        g.setFont(font);
         return g.getFontMetrics().stringWidth(s);
     }
 
@@ -188,17 +190,27 @@ class DrawTable extends JPanel implements GraphicsOperations {
             adapter.doWheelRotation(x, y, scale);
             doRepaint();
         });
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                isScreenChanged = true;
+            }
+        });
     }
 
+    private boolean isScreenChanged = false;
     protected void paintComponent(Graphics g) {
         this.g = g; // 总想着getGraphics()云云如何获取g，没想到可以直接在这里获取
         g.clearRect(0, 0, getWidth(), getHeight()); // 没这句就会有重影
         ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         if (null == adapter) {
-            adapter = new Adapter(this, getWidth() / 2, getHeight() / 2, 1);
+            adapter = new Adapter(this, getWidth(), getHeight(), 1);
         }
-
+        if (isScreenChanged) {
+            isScreenChanged = false;
+            adapter.setScreen(getWidth(), getHeight());
+        }
         adapter.paintEverything();
     }
 

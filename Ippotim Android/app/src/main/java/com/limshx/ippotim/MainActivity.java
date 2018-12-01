@@ -5,6 +5,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -71,10 +72,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         drawer.setFitsSystemWindows(false);
     }
 
-//    @Override
-//    public void onConfigurationChanged(Configuration newConfig) { // 屏幕旋转时调用，没有需要添加的操作则不需要覆盖。
-//        super.onConfigurationChanged(newConfig);
-//    }
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) { // 屏幕旋转时调用，没有需要添加的操作则不需要覆盖。
+        super.onConfigurationChanged(newConfig);
+        drawTable.isScreenChanged = true;
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -186,7 +188,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void clear() {
         openedFile = null;
-        drawTable.adapter = new Adapter(drawTable, drawTable.getMeasuredWidth() / 2, drawTable.getMeasuredHeight() / 2, drawTable.getScale());
+        drawTable.adapter.clear();
         drawTable.doRepaint();
     }
 

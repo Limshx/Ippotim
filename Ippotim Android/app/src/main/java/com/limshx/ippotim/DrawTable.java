@@ -131,20 +131,22 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     private void initKernel(GraphicsOperations graphicsOperation) {
-        int px = getMeasuredWidth();
-        int py = getMeasuredHeight();
         double scale = getScale();
-        adapter = new Adapter(graphicsOperation, px / 2, py / 2, scale);
+        adapter = new Adapter(graphicsOperation, getWidth(), getHeight(), scale);
         Terminal.fontSize = (int) (24 / scale);
     }
 
+    boolean isScreenChanged = false;
     protected void onDraw(Canvas canvas) {
         this.canvas = canvas;
         if (null == adapter) {
             initKernel(this);
 //            doRepaint();
         }
-
+        if (isScreenChanged) {
+            isScreenChanged = false;
+            adapter.setScreen(getWidth(), getHeight());
+        }
 //        paint.setColor(Color.WHITE);
 //        canvas.drawRect(0, 0, px, py, paint);
 //        canvas.drawPaint(paint);
@@ -152,7 +154,7 @@ public class DrawTable extends View implements GraphicsOperations {
         adapter.paintEverything();
     }
 
-    double getScale() {
+    private double getScale() {
         return Math.sqrt((1280 * 720d) / (displayMetrics.widthPixels * displayMetrics.heightPixels));
     }
 
@@ -223,8 +225,8 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     @Override
-    public void drawRect(int x, int y, int width, int height) {
-        paint.setColor(Color.BLACK);
+    public void drawRect(int x, int y, int width, int height, int color) {
+        paint.setColor(color);
         paint.setStyle(Paint.Style.STROKE);
         canvas.drawRect(x, y, x + width, y + height, paint);
     }
@@ -259,7 +261,7 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     @Override
-    public int getTextLength(String s, int fontSize) {
+    public int getPixelWidth(String s, int fontSize) {
 //        Rect bounds = new Rect();
 //        paint.getTextBounds(s, 0, s.length(), bounds);
 //        return bounds.width();

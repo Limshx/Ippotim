@@ -1,7 +1,7 @@
 package Kernel;
 
 public interface GraphicsOperations {
-    void drawRect(int x, int y, int width, int height);
+    void drawRect(int x, int y, int width, int height, int color);
 
     void fillRect(int x, int y, int width, int height, int color);
 
@@ -11,7 +11,7 @@ public interface GraphicsOperations {
 
     void appendText(String s);
 
-    int getTextLength(String s, int fontSize);
+    int getPixelWidth(String s, int fontSize);
 
     String getInput();
 
