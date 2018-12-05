@@ -92,7 +92,7 @@ class Executor {
                 match -= 1;
             }
             if (0 == match && separator == instanceName.charAt(i)) {
-                chains.add(instanceName.substring(start, i));
+                chains.add(instanceName.substring(start + (elementOrArray ? 0 : 1), i));
                 start = i + 1;
             }
         }
@@ -422,10 +422,10 @@ class Executor {
     private boolean compare(HashMap<String, Instance> instances, String[] parameters, String operation) {
         switch (operation) {
             case "<": {
-                return (int) getValue(instances, parameters[0]) < (int) getValue(instances, parameters[1]);
+                return getNumber(instances, parameters[0]) < getNumber(instances, parameters[1]);
             }
             case "<=": {
-                return (int) getValue(instances, parameters[0]) <= (int) getValue(instances, parameters[1]);
+                return getNumber(instances, parameters[0]) <= getNumber(instances, parameters[1]);
             }
             case "==": {
                 return isTheSame(instances, parameters);
@@ -434,10 +434,10 @@ class Executor {
                 return !isTheSame(instances, parameters);
             }
             case ">=": {
-                return (int) getValue(instances, parameters[0]) >= (int) getValue(instances, parameters[1]);
+                return getNumber(instances, parameters[0]) >= getNumber(instances, parameters[1]);
             }
             case ">": {
-                return (int) getValue(instances, parameters[0]) > (int) getValue(instances, parameters[1]);
+                return getNumber(instances, parameters[0]) > getNumber(instances, parameters[1]);
             }
             default: {
                 return false;
@@ -517,7 +517,14 @@ class Executor {
     }
 
     private void setValue(Instance instance, Object value) {
-        instance.elements.getFirst().name = value;
+        if (value instanceof Integer) {
+            // 用函数调用而不是直接强制类型转换就不会报“Casting 'value' to 'int' is redundant”了。
+            instance.elements.getFirst().name = getNumber(value);
+        } else if (value instanceof String){
+            instance.elements.getFirst().name = getString(value);
+        } else {
+            instance.elements.getFirst().name = null;
+        }
     }
 
     private Object getValue(Instance instance) {
@@ -572,9 +579,17 @@ class Executor {
                     return String.valueOf(string.charAt(index));
                 }
             }
-            // 字符串索引越界则返回空，这跟普通或者说一般的数组越界处理是统一的。这里跟string为null的情况合在一起写了。
+            // 字符串索引越界则返回空，这跟普通或者说一般的数组越界处理是统一的。这里跟string为null的情况合在一起写了，string为null就是没初始化。
             return "";
         }
+    }
+
+    private String getString(Object o) {
+        return (String) o;
+    }
+
+    private int getNumber(Object o) {
+        return (int) o;
     }
 
     // 统一之类似勾股变余弦是压缩优化代码的技巧甚至说基础
@@ -615,7 +630,7 @@ class Executor {
                     start = nextStart + 1;
                 }
             } else if (0 == start) {
-                if ('(' == instanceName.charAt(0)) {
+                if (1 == operationType && '(' == instanceName.charAt(0)) {
                     return getNumber(instances, instanceName.substring(1, instanceName.length() - 1));
                 }
                 // start为0说明没有遇到运算符
@@ -642,7 +657,12 @@ class Executor {
         try {
             return Integer.parseInt(instanceName); // 数太大溢出会导致解析错误无限循环，这个提前报错即可，报错功能后续会添加
         } catch (NumberFormatException e) {
-            Integer value = (Integer) getValue(getInstance(instances, instanceName));
+            Integer value = null;
+            Instance instance = getInstance(instances, instanceName);
+            if (null != instance) {
+                value = (Integer) getValue(instance);
+                return null != value ? value : 0;
+            }
             for (int i = 0; i < 2; i++) {
                 if (null != value) {
                     return value;

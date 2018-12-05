@@ -7,6 +7,8 @@ class Rectangle {
     static int height;
     static int arrowSize;
     private static int fontSize;
+    static double scale;
+    static double defaultScale;
     private static final int defaultWidth = 200;
     private static final int defaultHeight = 40;
     private static final int defaultFontSize = 32;
@@ -20,10 +22,10 @@ class Rectangle {
     }
 
     static void updateSize() {
-        width = (int) (defaultWidth * Adapter.scale);
-        height = (int) (defaultHeight * Adapter.scale);
-        fontSize = (int) (defaultFontSize * Adapter.scale);
-        arrowSize = (int) (defaultArrowSize * Adapter.scale);
+        width = (int) (defaultWidth * scale);
+        height = (int) (defaultHeight * scale);
+        fontSize = (int) (defaultFontSize * scale);
+        arrowSize = (int) (defaultArrowSize * scale);
     }
 
     void setContent(String s) {

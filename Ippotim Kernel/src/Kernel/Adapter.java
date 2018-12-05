@@ -26,7 +26,6 @@ public class Adapter {
     private int x, y;
     private int width, height;
     private List selectedList;
-    static double scale;
     private TreeNode selectedTreeNode;
     static GraphicsOperations graphicsOperations; // 本来是static GraphicsOperations drawTable = new DrawTable();之实际用不到所有的DrawTable的方法与属性，通过接口或抽象类可以完美解耦合，这就是函数指针、接口、抽象类之类的真正奥义
     private Executor executor;
@@ -46,7 +45,7 @@ public class Adapter {
     private Color[] colors = {new Color(Color.RED, Color.YELLOW), new Color(Color.WHITE, Color.BLACK), new Color(Color.YELLOW, Color.RED)};
 
     private void setScale(double s) {
-        scale = s;
+        Rectangle.scale = s;
         Rectangle.updateSize();
     }
 
@@ -63,7 +62,8 @@ public class Adapter {
     public Adapter(GraphicsOperations g, int x, int y, double s) {
         graphicsOperations = g;
         setScreen(x, y);
-        setScale(1 / s);
+        Rectangle.defaultScale = 1 / s;
+        setScale(Rectangle.defaultScale);
         structures.put("void", null);
         addDefaultMainFunction();
     }
@@ -89,6 +89,7 @@ public class Adapter {
     }
 
     private void clear(boolean addDefaultMainFunction) {
+        setScale(Rectangle.defaultScale);
         pages.clear();
         lists.clear();
         structures.clear();
@@ -284,7 +285,7 @@ public class Adapter {
             Element root = document.createElement("Code");
 
             Element size = document.createElement("Size");
-            size.appendChild(document.createTextNode(String.valueOf(scale)));
+            size.appendChild(document.createTextNode(String.valueOf(Rectangle.scale)));
             root.appendChild(size);
 
             Element structuresNodes = document.createElement("Structures");
@@ -735,10 +736,10 @@ public class Adapter {
     }
 
     public void doWheelRotation(int x, int y, double s) {
-        if (scale / s < 0.4 || scale / s > 2.5) { // 缩放倍率不超过基准倍率2.5倍
+        if (Rectangle.scale / s < 0.4 || Rectangle.scale / s > 2.5) { // 缩放倍率不超过基准倍率2.5倍
             return;
         }
-        setScale(scale / s);
+        setScale(Rectangle.scale / s);
         for (List list : lists) {
             list.x = (int) (x + (list.x - x) / s);
             list.y = (int) (y + (list.y - y) / s);
