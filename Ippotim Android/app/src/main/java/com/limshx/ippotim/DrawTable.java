@@ -297,6 +297,7 @@ public class DrawTable extends View implements GraphicsOperations {
 
                     @Override
                     void onPositive() {
+                        terminal.infoBox[1] = null;
                         input = ((EditText) getView()).getText().toString();
                         inputted = true;
                     }
