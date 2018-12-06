@@ -1,6 +1,5 @@
 package com.limshx.ippotim;
 
-import Kernel.Adapter;
 import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -309,7 +308,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             return;
                         }
 
-                        terminal.infoBox = new InfoBox("0~" + terminal.getPagesCount() + " :", "Cancel", "OK", new EditText(context), context) {
+                        terminal.infoBox[0] = new InfoBox("0~" + terminal.getPagesCount() + " :", "Cancel", "OK", new EditText(context), context) {
                             @Override
                             void onNegative() {
 
@@ -325,7 +324,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                 }
                             }
                         };
-                        terminal.infoBox.showDialog(true, false);
+                        terminal.infoBox[0].showDialog(true, false);
                     }
                 };
                 infoBox.showDialog(false, true);

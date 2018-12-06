@@ -137,8 +137,8 @@ class DrawTable extends JPanel implements GraphicsOperations {
     }
 
     @Override
-    public String getInput() {
-        return JOptionPane.showInputDialog("Input an expression :");
+    public String getInput(String name) {
+        return JOptionPane.showInputDialog("Input for \"" + name + "\" :");
     }
 
     DrawTable() {

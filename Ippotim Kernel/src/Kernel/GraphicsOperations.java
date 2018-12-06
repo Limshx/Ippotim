@@ -13,7 +13,7 @@ public interface GraphicsOperations {
 
     int getPixelWidth(String s, int fontSize);
 
-    String getInput();
+    String getInput(String name);
 
     void create(String s);
 

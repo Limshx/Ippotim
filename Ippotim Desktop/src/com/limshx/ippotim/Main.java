@@ -54,8 +54,11 @@ class Main extends JFrame {
         jMenu = new JMenu("File");
         jMenuItems[0] = new JMenuItem("Import");
         jMenuItems[0].addActionListener(actionEvent -> {
-            JFileChooser jFileChooser = new JFileChooser(new File(homeDirectory));
-            jFileChooser.showOpenDialog(null);
+            JFileChooser jFileChooser = new JFileChooser(homeDirectory);
+            int result = jFileChooser.showOpenDialog(null);
+            if (JOptionPane.YES_OPTION != result) {
+                return;
+            }
             File file = jFileChooser.getSelectedFile();
             if (null != file) {
                 openedFile = file;
@@ -67,15 +70,24 @@ class Main extends JFrame {
         });
         jMenuItems[1] = new JMenuItem("Export");
         jMenuItems[1].addActionListener(actionEvent -> {
-            String fileName = JOptionPane.showInputDialog("Input a file name :", null != openedFile ? openedFile.getName() : null);
-            if (null != fileName && !fileName.equals("")) {
-                if (new File(homeDirectory + fileName).exists()) {
-                    int result = JOptionPane.showConfirmDialog(null, "File \"" + fileName + "\" exists, overwrite it?");
+            JFileChooser jFileChooser = new JFileChooser(homeDirectory);
+//            jFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            jFileChooser.setSelectedFile(openedFile);
+            int result = jFileChooser.showOpenDialog(null);
+            if (JOptionPane.YES_OPTION != result) {
+                return;
+            }
+            File file = jFileChooser.getSelectedFile();
+            if (null != file) {
+                openedFile = file;
+                homeDirectory = openedFile.getParent() + "/";
+                if (openedFile.exists()) {
+                    result = JOptionPane.showConfirmDialog(null, "File \"" + openedFile.getName() + "\" exists, overwrite it?");
                     if (JOptionPane.YES_OPTION != result) {
                         return;
                     }
                 }
-                drawTable.adapter.setCodeToXml(new File(homeDirectory + fileName));
+                drawTable.adapter.setCodeToXml(openedFile);
             }
         });
         jMenuItems[2] = new JMenuItem("Clear");

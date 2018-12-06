@@ -10,6 +10,7 @@ import android.graphics.Typeface;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -34,7 +35,7 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
     private Context context;
     private TextView textView;
     Adapter adapter;
-    InfoBox infoBox;
+    InfoBox[] infoBox = new InfoBox[2];
 
     public Terminal(Context context) {
         super(context);
@@ -42,7 +43,17 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
         holder = getHolder();
         holder.addCallback(this);
         //holder.setFormat(PixelFormat.TRANSPARENT); // 顶层绘制SurfaceView设成透明
-        this.setZOrderOnTop(true);
+        setZOrderOnTop(true);
+        setOnLongClickListener(new OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                // 长按恢复infoBox[1]的对话框
+                if (null != infoBox[1]) {
+                    infoBox[1].getAlertDialog().show();
+                }
+                return true;
+            }
+        });
     }
 
     @Override
@@ -90,8 +101,8 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
         drawText(index);
 
         // 屏幕旋转后刷新跳转输入对话框的表示跳转范围的标题。
-        if (null != infoBox) {
-            infoBox.getAlertDialog().setTitle("0~" + getPagesCount() + " :");
+        if (null != infoBox[0]) {
+            infoBox[0].getAlertDialog().setTitle("0~" + getPagesCount() + " :");
         }
 
         if (null != textView) {
@@ -111,7 +122,7 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
     }
 
     public boolean onTouchEvent(MotionEvent motionEvent) {
-        if (running) {
+        if (running && null == infoBox[1]) {
             return false;
         }
         performClick();
@@ -179,7 +190,8 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                 break;
             }
         }
-        return true;
+        // 这里直接返回true就无法触发长按事件了
+        return super.onTouchEvent(motionEvent);
     }
 
     private void updateTextView() {

@@ -33,7 +33,7 @@ public class DrawTable extends View implements GraphicsOperations {
         paint.setAntiAlias(true);
         paint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.NORMAL));
 
-        this.setOnLongClickListener(new OnLongClickListener() {
+        setOnLongClickListener(new OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
                 if (!doLongClick) {
@@ -137,6 +137,7 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     boolean isScreenChanged = false;
+
     protected void onDraw(Canvas canvas) {
         this.canvas = canvas;
         if (null == adapter) {
@@ -183,6 +184,7 @@ public class DrawTable extends View implements GraphicsOperations {
                     adapter.insert("");
                 }
             }
+
             @Override
             void onPositive() {
                 String input = ((EditText) getView()).getText().toString();
@@ -284,22 +286,22 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     @Override
-    public String getInput() {
+    public String getInput(final String name) {
         post(new Runnable() {
             @Override
             public void run() {
-                InfoBox infoBox = new InfoBox("Input a value :", "Cancel", "OK", new EditText(context), context) {
+                terminal.infoBox[1] = new InfoBox("Input for \"" + name + "\" :", "Hide", "OK", new EditText(context), context) {
                     @Override
                     void onNegative() {
-                        adapter.stop();
                     }
+
                     @Override
                     void onPositive() {
                         input = ((EditText) getView()).getText().toString();
                         inputted = true;
                     }
                 };
-                infoBox.showDialog();
+                terminal.infoBox[1].showDialog();
             }
         });
         waitForInput();

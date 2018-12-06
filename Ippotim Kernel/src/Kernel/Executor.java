@@ -32,6 +32,7 @@ class Executor {
             // type和name本来就是null，就不用开个else赋为null了，这是一种需要细心才能发现的优化。
             this.type = type;
             this.name = name;
+            // 虽然绝大多数变量都用不到数组元素，但如果不初始化的话似s.next[0]赋了值而s.next还是null，s.next[0]为不为null直接决定了s.next作为参数后会不会同步修改，这是不合理的。至于说每一个函数都有一个总的arrayElements，函数调用的时候映射关系的继承是个问题。这个暂时没有更好的解决方案，暂搁置。
             this.arrayElements = new HashMap<>();
             if ("void".equals(type)) {
                 // 基本数据类型的值设计为其唯一的元素且也是变量，暂时假装不是元素而已，这样是方便判断是不是有传统意义上的结构体元素
@@ -223,11 +224,11 @@ class Executor {
                 }
                 case INPUT: {
                     // 从1开始是因为0是“input”。
-                    // input设计为赋值语句的手动模式，也即input后可接任意变量，用户输入的可以是任意表达式和或者说包括任意变量名。
+                    // input设计为赋值语句的手动模式，也即input后可接任意void变量，用户输入的可以是任意表达式和或者说包括任意变量名。
                     for (int i = 1; i < command.elements.size(); i++) {
                         Instance instance = getInstance(instances, command.elements.get(i));
-                        if (instance != null) {
-                            setValue(instance, getValue(instances, Adapter.graphicsOperations.getInput()));
+                        if (null != instance && "void".equals(instance.type)) {
+                            setValue(instance, getValue(instances, Adapter.graphicsOperations.getInput((String) instance.name)));
                         }
                     }
                     break;
@@ -528,7 +529,16 @@ class Executor {
     }
 
     private Object getValue(Instance instance) {
-        return null != instance ? instance.elements.getFirst().name : null;
+        if (null != instance && "void".equals(instance.type)) {
+            Object value = instance.elements.getFirst().name;
+            if (null != value) {
+                return value;
+            } else {
+                // 未初始化的void变量默认都是0
+                return 0;
+            }
+        }
+        return null;
     }
 
     private Object getValue(HashMap<String, Instance> instances, String instanceName) {
@@ -568,7 +578,8 @@ class Executor {
         if ('"' == parts.get(0).charAt(0)) {
             string = parts.get(0).substring(1, parts.get(0).length() - 1);
         } else {
-            string = String.valueOf(getValue(instances, parts.get(0)));
+            Object value = getValue(instances, parts.get(0));
+            string = null != value ? String.valueOf(value) : null;
         }
         if (1 == parts.size()) {
             return string;
@@ -577,10 +588,13 @@ class Executor {
                 int index = getNumber(instances, parts.get(1));
                 if (0 <= index && index < string.length()) {
                     return String.valueOf(string.charAt(index));
+                } else {
+                    // 字符串索引越界则返回""
+                    return "";
                 }
             }
-            // 字符串索引越界则返回空，这跟普通或者说一般的数组越界处理是统一的。这里跟string为null的情况合在一起写了，string为null就是没初始化。
-            return "";
+            // 字符串为空则返回空。
+            return null;
         }
     }
 
@@ -657,13 +671,13 @@ class Executor {
         try {
             return Integer.parseInt(instanceName); // 数太大溢出会导致解析错误无限循环，这个提前报错即可，报错功能后续会添加
         } catch (NumberFormatException e) {
-            Integer value = null;
             Instance instance = getInstance(instances, instanceName);
             if (null != instance) {
-                value = (Integer) getValue(instance);
-                return null != value ? value : 0;
+                return (Integer) getValue(instance);
             }
+            Integer value = null;
             for (int i = 0; i < 2; i++) {
+                // 如果判空返回放到循环后面，循环结束后就是直接返回null了，这样会到处报空指针警告。
                 if (null != value) {
                     return value;
                 }
