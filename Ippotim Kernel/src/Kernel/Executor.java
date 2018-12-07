@@ -513,8 +513,15 @@ class Executor {
             }
         }
         Instance instance = getInstance(instances, booleanExpression);
-        // 根据现有处理机制elements为空即变量为空
-        return instance != null && instance.elements != null;
+        if (null != instance) {
+            if ("void".equals(instance.type)) {
+                return null != instance.elements.getFirst().name;
+            } else {
+                // 根据现有处理机制elements为空即变量为空
+                return null != instance.elements;
+            }
+        }
+        return false;
     }
 
     private void setValue(Instance instance, Object value) {

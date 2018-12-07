@@ -102,29 +102,37 @@ class DrawTable extends JPanel implements GraphicsOperations {
 
     StringBuilder stringBuilder;
     private boolean hasSoftWrap;
+    private void getOutput(String s) {
+        if (s.equals("\n")) {
+            if (hasSoftWrap) {
+                hasSoftWrap = false;
+                return;
+            }
+            jTextArea.append("\n");
+            stringBuilder = new StringBuilder();
+        } else {
+            int cachedStringLength = stringBuilder.length();
+            int maxCachedStringLength = 1000;
+            if (maxCachedStringLength <= cachedStringLength + s.length()) {
+                hasSoftWrap = true;
+                int freeSpace = maxCachedStringLength - cachedStringLength;
+                jTextArea.append(s.substring(0, freeSpace));
+                jTextArea.append("\n");
+                stringBuilder = new StringBuilder();
+                String remainingString = s.substring(freeSpace);
+                if (!remainingString.equals("")) {
+                    getOutput(s.substring(freeSpace));
+                }
+            } else {
+                jTextArea.append(s);
+                stringBuilder.append(s);
+            }
+        }
+    }
 
     @Override
     public void appendText(String s) {
-        int cachedStringLength = stringBuilder.length();
-        int maxCachedStringLength = 1000;
-        if (maxCachedStringLength <= cachedStringLength + s.length()) {
-            hasSoftWrap = true;
-            int freeSpace = maxCachedStringLength - cachedStringLength;
-            jTextArea.append(s.substring(0, freeSpace));
-            jTextArea.append("\n");
-            stringBuilder = new StringBuilder();
-            String remainingString = s.substring(freeSpace);
-            if (!remainingString.equals("")) {
-                appendText(s.substring(freeSpace));
-            }
-        } else {
-            if (hasSoftWrap && s.equals("\n")) {
-                hasSoftWrap = false;
-            } else {
-                stringBuilder.append(s);
-                jTextArea.append(s);
-            }
-        }
+        getOutput(s);
         jTextArea.setCaretPosition(jTextArea.getText().length());
     }
 
