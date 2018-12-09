@@ -9,6 +9,9 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.WindowConstants;
+import java.awt.Toolkit;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -22,10 +25,18 @@ class Main extends JFrame {
     private static File openedFile;
     private static String homeDirectory;
 
+    private static void setWindowCenter(JFrame jFrame) {
+        int screenWidth = Toolkit.getDefaultToolkit().getScreenSize().width;
+        int screenHeight = Toolkit.getDefaultToolkit().getScreenSize().height;
+        jFrame.setLocation(screenWidth / 2 - jFrame.getWidth() / 2, screenHeight / 2 - jFrame.getHeight() / 2);
+    }
+
     public static void main(String[] args) {
-        Main drawRect = new Main("The Ippotim Programming Language");
+        // 开启硬件加速，启动参数里加-Dsun.java2d.opengl=true也行，但是当然还是代码里加好。
+        System.setProperty("sun.java2d.opengl", "true");
+        Main main = new Main("The Ippotim Programming Language");
         try {
-            drawRect.setIconImage(ImageIO.read(drawRect.getClass().getResource("ippotim.png")));
+            main.setIconImage(ImageIO.read(main.getClass().getResource("ippotim.png")));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -42,7 +53,6 @@ class Main extends JFrame {
 //        }
 
         DrawTable drawTable = new DrawTable();
-        drawRect.add(drawTable);
 //        Container cont = drawRect.getContentPane();
 //        drawTable.setPreferredSize(new Dimension(drawTable.windowSize, drawTable.windowSize));
 //        JScrollPane scr1 = new JScrollPane(drawTable, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
@@ -112,9 +122,10 @@ class Main extends JFrame {
         drawTable.jTextArea.setEditable(false);
         JFrame jFrame = new JFrame("Output");
         jFrame.add(jScrollPane);
-        int windowSize = drawTable.windowSize / 2;
+        int defaultWindowSize = 600;
+        int windowSize = defaultWindowSize / 2;
         jFrame.setSize(windowSize, windowSize);
-        drawTable.setWindowCenter(jFrame);
+        setWindowCenter(jFrame);
         jFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -181,11 +192,19 @@ class Main extends JFrame {
         jMenu.add(jMenuItems[5]);
         jMenu.add(jMenuItems[6]);
         jMenuBar.add(jMenu);
-        drawRect.setJMenuBar(jMenuBar);
+        main.setJMenuBar(jMenuBar);
 
-        drawRect.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        drawRect.setSize(drawTable.windowSize, drawTable.windowSize);
-        drawTable.setWindowCenter(drawRect);
-        drawRect.setVisible(true);
+        main.add(drawTable);
+        main.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                drawTable.isScreenChanged = true;
+            }
+        });
+
+        main.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        main.setSize(defaultWindowSize, defaultWindowSize);
+        setWindowCenter(main);
+        main.setVisible(true);
     }
 }

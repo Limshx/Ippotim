@@ -3,7 +3,6 @@ package com.limshx.ippotim;
 import Kernel.Adapter;
 import Kernel.GraphicsOperations;
 
-import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
@@ -12,16 +11,12 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.Toolkit;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 
 class DrawTable extends JPanel implements GraphicsOperations {
     Adapter adapter;
-    int windowSize = 600;
     private Graphics g;
     private Font font;
     JTextArea jTextArea = new JTextArea();
@@ -124,6 +119,9 @@ class DrawTable extends JPanel implements GraphicsOperations {
                     getOutput(s.substring(freeSpace));
                 }
             } else {
+                if (hasSoftWrap) {
+                    hasSoftWrap = false;
+                }
                 jTextArea.append(s);
                 stringBuilder.append(s);
             }
@@ -198,15 +196,9 @@ class DrawTable extends JPanel implements GraphicsOperations {
             adapter.doWheelRotation(x, y, scale);
             doRepaint();
         });
-        addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                isScreenChanged = true;
-            }
-        });
     }
 
-    private boolean isScreenChanged = false;
+    boolean isScreenChanged = false;
     protected void paintComponent(Graphics g) {
         this.g = g; // 总想着getGraphics()云云如何获取g，没想到可以直接在这里获取
         g.clearRect(0, 0, getWidth(), getHeight()); // 没这句就会有重影
@@ -220,11 +212,5 @@ class DrawTable extends JPanel implements GraphicsOperations {
             adapter.setScreen(getWidth(), getHeight());
         }
         adapter.paintEverything();
-    }
-
-    void setWindowCenter(JFrame jFrame) {
-        int screenWidth = Toolkit.getDefaultToolkit().getScreenSize().width;
-        int screenHeight = Toolkit.getDefaultToolkit().getScreenSize().height;
-        jFrame.setLocation(screenWidth / 2 - jFrame.getWidth() / 2, screenHeight / 2 - jFrame.getHeight() / 2);
     }
 }

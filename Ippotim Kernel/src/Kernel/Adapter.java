@@ -33,13 +33,7 @@ public class Adapter {
     static HashMap<String, List> structures = new HashMap<>();
     static HashMap<String, String> functionNameToParameters = new HashMap<>();
     static HashMap<String, List> functions = new HashMap<>();
-    private LinkedList<List> lists = new LinkedList<>();
     // 哈希表是建立映射的一种数据结构，可以用来给元素添加属性，而不需要新建一个类
-
-    // 当前页名
-    private String currentPageName = "";
-    // 分页哈希表，用以像代码分文件那样给矩形组分页
-    private HashMap<String, LinkedList<List>> pages = new HashMap<>();
 
     // 0是结构定义用色，1是main函数用色，2是函数定义用色
     private Color[] colors = {new Color(Color.RED, Color.YELLOW), new Color(Color.WHITE, Color.BLACK), new Color(Color.YELLOW, Color.RED)};
@@ -71,7 +65,7 @@ public class Adapter {
     private void addDefaultMainFunction() {
         // main函数也并入函数集合
         Rectangle.currentGroupColor = colors[1];
-        List main = new List(width / 2 - Rectangle.width / 2, height / 2 - Rectangle.height);
+        List main = new List(width / 2 - Rectangle.width / 2, height / 2 - Rectangle.height, null);
 
         Rectangle rectangle = new Rectangle("");
         TreeNode treeNode = new TreeNode();
@@ -83,15 +77,12 @@ public class Adapter {
         treeNode.rectangle = rectangle;
         main.treeNodes.add(treeNode);
 
-        registerList(main);
         registerFunction(main);
-        pages.put(currentPageName, lists);
     }
 
     private void clear(boolean addDefaultMainFunction) {
         setScale(Rectangle.defaultScale);
-        pages.clear();
-        lists.clear();
+        List.lists.clear();
         structures.clear();
         structures.put("void", null);
         functionNameToParameters.clear();
@@ -107,7 +98,7 @@ public class Adapter {
     }
 
     private void updateElements() {
-        for (List list : lists) {
+        for (List list : List.lists) {
             for (TreeNode treeNode : Executor.getDataList(list)) {
                 treeNode.updateElements();
             }
@@ -131,7 +122,7 @@ public class Adapter {
         executor.stop = true;
     }
 
-    private TreeNode importTreeNode(Node node) {
+    private TreeNode importTreeNode(Node node, List preList) {
         NodeList childNodes = node.getChildNodes();
 
         Node contentNode = childNodes.item(0);
@@ -142,18 +133,17 @@ public class Adapter {
         Node subTreeNodes = childNodes.item(1);
         // 这里原来有个else，即没有子结点就将subTreeNodes置为null，然而这个初始化就是null，所以直接去掉，这是一种典型的优化。
         if (subTreeNodes.hasChildNodes()) {
-            treeNode.list = importList(subTreeNodes); // 之前subGroupNumber是maxGroupNumber + 1，这样在循环的时候maxGroupNumber就会不断增加从而导致逻辑错误，这个要引以为鉴。
+            treeNode.list = importList(subTreeNodes, preList); // 之前subGroupNumber是maxGroupNumber + 1，这样在循环的时候maxGroupNumber就会不断增加从而导致逻辑错误，这个要引以为鉴。
         }
         return treeNode;
     }
 
-    private List importList(Node node) {
+    private List importList(Node node, List preList) {
         int x = Integer.parseInt(node.getChildNodes().item(0).getFirstChild().getNodeValue());
         int y = Integer.parseInt(node.getChildNodes().item(1).getFirstChild().getNodeValue());
-        List list = new List(x, y);
-        registerList(list);
+        List list = new List(x, y, preList);
         for (int i = 2; i < node.getChildNodes().getLength(); i++) { // 从2开始是因为0和1已经用来给x和y赋值了
-            list.treeNodes.add(importTreeNode(node.getChildNodes().item(i)));
+            list.treeNodes.add(importTreeNode(node.getChildNodes().item(i), list));
         }
         return list;
     }
@@ -185,15 +175,6 @@ public class Adapter {
         }
     }
 
-    private void unregisterList(List list) {
-        lists.remove(list);
-        list.treeNodes.clear();
-    }
-
-    private void registerList(List list) {
-        lists.add(list);
-    }
-
     private String getListHead(List list) {
         return list.treeNodes.getFirst().rectangle.getContent();
     }
@@ -220,7 +201,7 @@ public class Adapter {
 
     // listType: 0是结构定义，1是函数定义
     private void getList(Node node, boolean structureOrFunction) {
-        List list = importList(node);
+        List list = importList(node, null);
         if (structureOrFunction) {
             registerStructure(list);
         } else {
@@ -326,7 +307,7 @@ public class Adapter {
             return;
         }
         Rectangle.currentGroupColor = colors[2];
-        List list = new List(x, y);
+        List list = new List(x, y, null);
         Rectangle rectangle = new Rectangle(s);
         TreeNode treeNode = new TreeNode();
         treeNode.rectangle = rectangle;
@@ -337,7 +318,6 @@ public class Adapter {
         treeNode.rectangle = rectangle;
         list.treeNodes.add(treeNode);
 
-        registerList(list);
         registerFunction(list);
     }
 
@@ -347,7 +327,7 @@ public class Adapter {
             return;
         }
         Rectangle.currentGroupColor = colors[0];
-        List list = new List(x, y);
+        List list = new List(x, y, null);
         Rectangle rectangle = new Rectangle(s);
         TreeNode treeNode = new TreeNode();
         treeNode.rectangle = rectangle;
@@ -358,7 +338,6 @@ public class Adapter {
         treeNode.rectangle = rectangle;
         list.treeNodes.add(treeNode);
 
-        registerList(list);
         registerStructure(list);
     }
 
@@ -370,8 +349,7 @@ public class Adapter {
         treeNode.rectangle = rectangle;
 
         if (s.startsWith("if ") || s.equals("else") || s.startsWith("while ")) {
-            List list = new List();
-            treeNode.list = list;
+            treeNode.list = new List(selectedList);
             rectangle = new Rectangle("");
             TreeNode subTreeNode = new TreeNode();
             subTreeNode.rectangle = rectangle;
@@ -381,7 +359,6 @@ public class Adapter {
             subTreeNode = new TreeNode();
             subTreeNode.rectangle = rectangle;
             treeNode.list.treeNodes.add(subTreeNode);
-            registerList(list);
         }
 
         return treeNode;
@@ -474,7 +451,7 @@ public class Adapter {
             for (TreeNode t : treeNode.list.treeNodes) {
                 unregisterTreeNode(t);
             }
-            unregisterList(treeNode.list);
+            List.unregisterList(treeNode.list);
         }
     }
 
@@ -494,7 +471,7 @@ public class Adapter {
                         unregisterFunction(selectedList);
                     }
                     // 要么是结构定义要么是函数定义，删不掉的是main函数和子句，在上一个判断中已经返回了
-                    unregisterList(selectedList);
+                    List.unregisterList(selectedList);
                 } else {
                     unregisterTreeNode(t);
                     selectedList.treeNodes.remove(t);
@@ -577,11 +554,10 @@ public class Adapter {
         TreeNode treeNode = new TreeNode();
         treeNode.rectangle = new Rectangle(t.rectangle.getContent());
         if (null != t.list) {
-            treeNode.list = new List(t.list.x, t.list.y);
+            treeNode.list = new List(t.list.x, t.list.y, selectedList);
             for (TreeNode subTreeNode : t.list.treeNodes) {
                 treeNode.list.treeNodes.add(copy(subTreeNode));
             }
-            registerList(treeNode.list);
         }
         return treeNode;
     }
@@ -608,13 +584,10 @@ public class Adapter {
     private boolean doCreateMember;
 
     public void click() {
-        // selectedGroup和selectedRect应该可以和tempRectangle合并
-        selectedList = null;
-        selectedTreeNode = null;
         TreeNode preTreeNode = null;
         TreeNode currentTreeNode;
         // 从后往前遍历
-        ListIterator<List> iterator = lists.listIterator(lists.size());
+        ListIterator<List> iterator = List.lists.listIterator(List.lists.size());
         while (iterator.hasPrevious()) {
             List list = iterator.previous();
             int baseX = list.x;
@@ -627,8 +600,12 @@ public class Adapter {
                 currentTreeNode = treeNode;
                 int width = currentTreeNode.rectangle.pixelWidth;
                 if (baseX <= x && x <= baseX + width && baseY <= y && y <= baseY + Rectangle.height) {
-                    selectedTreeNode = currentTreeNode;
+                    // 不能selectedList.equals(list)，因为selectedList可以为null。
+                    if (null != selectedList && !getSourceList(list).equals(getSourceList(selectedList))) {
+                        break;
+                    }
                     selectedList = list;
+                    selectedTreeNode = currentTreeNode;
                     moveToTail(list);
                     if (currentTreeNode.rectangle.getContent().equals("+")) {
                         doCreateMember = true;
@@ -641,6 +618,8 @@ public class Adapter {
                 preTreeNode = currentTreeNode;
             }
         }
+        selectedList = null;
+        selectedTreeNode = null;
     }
 
     private void moveList(List list, int x, int y) {
@@ -661,7 +640,7 @@ public class Adapter {
 
     public void drag(int x, int y) {
         if (null == selectedList) {
-            for (List list : lists) {
+            for (List list : List.lists) {
                 moveList(list, x - this.x, y - this.y, false);
             }
         } else {
@@ -740,7 +719,7 @@ public class Adapter {
             return;
         }
         setScale(Rectangle.scale / s);
-        for (List list : lists) {
+        for (List list : List.lists) {
             list.x = (int) (x + (list.x - x) / s);
             list.y = (int) (y + (list.y - y) / s);
             for (TreeNode t : list.treeNodes) {
@@ -749,14 +728,10 @@ public class Adapter {
         }
     }
 
-    public void moveToPage(String s) {
-
-    }
-
     private void moveToTail(List list) {
-        if (!lists.getLast().equals(list)) {
-            lists.remove(list);
-            lists.add(list);
+        if (!List.lists.getLast().equals(list)) {
+            List.lists.remove(list);
+            List.lists.add(list);
         }
     }
 
@@ -778,6 +753,7 @@ public class Adapter {
             if (null != focusedTreeNode.matchedFunction && !focusedTreeNode.matchedFunction.treeNodes.isEmpty()) {
                 targetList = focusedTreeNode.matchedFunction;
                 rectangle = focusedTreeNode.matchedFunction.treeNodes.getFirst().rectangle;
+                drawList(targetList, true);
                 rectangle.draw(targetList.x, targetList.y, rectangle.color.stringColor, rectangle.color.rectangleColor);
             }
 
@@ -786,6 +762,7 @@ public class Adapter {
             if (null != structure) { // 本来是CommandType.DEFINE == selectedTreeNode.commandType，不过现在这样也好
                 targetList = structure;
                 rectangle = structure.treeNodes.getFirst().rectangle;
+                drawList(targetList, true);
                 rectangle.draw(targetList.x, targetList.y, rectangle.color.stringColor, rectangle.color.rectangleColor);
             }
 
@@ -797,10 +774,10 @@ public class Adapter {
 
     private Integer focusedX, focusedY;
     private LinkedList<Arrow> arrows = new LinkedList<>();
-    private void drawList(List list) {
-        baseX = list.x;
+    private void drawList(List list, boolean drawSubLists) {
+        int baseX = list.x;
         // 先减去Rectangle.height是为了baseY += Rectangle.height;这句能放到最前面，放最前面是说必须执行到。
-        baseY = list.y - Rectangle.height;
+        int baseY = list.y - Rectangle.height;
         for (TreeNode treeNode : list.treeNodes) {
             baseY += Rectangle.height;
             if (baseY >= height) {
@@ -818,6 +795,9 @@ public class Adapter {
                     treeNode.list.x = baseX + Rectangle.width;
                     treeNode.list.y = baseY;
                 }
+                if (drawSubLists) {
+                    drawList(treeNode.list, true);
+                }
                 arrows.add(new Arrow(baseX, baseY, treeNode.list.x, treeNode.list.y));
             }
             if (treeNode.equals(selectedTreeNode)) {
@@ -833,11 +813,23 @@ public class Adapter {
         }
     }
 
+    private List getSourceList(List list) {
+        List sourceList = list;
+        while (null != sourceList.preList) {
+            sourceList = sourceList.preList;
+        }
+        return sourceList;
+    }
+
     public void paintEverything() {
-        for (List list : lists) {
-            if (list.x < width && list.y < height) {
-                drawList(list);
+        if (null == selectedList) {
+            for (List list : List.lists) {
+                if (list.x < width && list.y < height) {
+                    drawList(list, false);
+                }
             }
+        } else {
+            drawList(getSourceList(selectedList), true);
         }
         if (null != selectedTreeNode && null != focusedX) {
             drawFocusedTreeNode(focusedX, focusedY);

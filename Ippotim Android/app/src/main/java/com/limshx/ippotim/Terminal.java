@@ -250,7 +250,9 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                     getOutput(remainingString);
                 }
             } else {
-                hasSoftWrap = false;
+                if (hasSoftWrap) {
+                    hasSoftWrap = false;
+                }
                 list.get(list.size() - 1).append(s);
             }
 //            while (!canPrintInOneLine(printStringBuilder.toString())) {
