@@ -9,8 +9,10 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.WindowConstants;
-import java.awt.GraphicsEnvironment;
+import java.awt.Dimension;
 import java.awt.Toolkit;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -23,16 +25,21 @@ class Main extends JFrame {
     }
     private static File openedFile;
     private static String homeDirectory;
+    private static int screenWidth, screenHeight;
+
+    private static void initScreenSize() {
+        screenWidth = Toolkit.getDefaultToolkit().getScreenSize().width;
+        screenHeight = Toolkit.getDefaultToolkit().getScreenSize().height;
+    }
 
     private static void setWindowCenter(JFrame jFrame) {
-        int screenWidth = Toolkit.getDefaultToolkit().getScreenSize().width;
-        int screenHeight = Toolkit.getDefaultToolkit().getScreenSize().height;
         jFrame.setLocation(screenWidth / 2 - jFrame.getWidth() / 2, screenHeight / 2 - jFrame.getHeight() / 2);
     }
 
     public static void main(String[] args) {
         // 开启硬件加速，启动参数里加-Dsun.java2d.opengl=true也行，但是当然还是代码里加好。
         System.setProperty("sun.java2d.opengl", "true");
+        initScreenSize();
         Main main = new Main("The Ippotim Programming Language");
         try {
             main.setIconImage(ImageIO.read(main.getClass().getResource("ippotim.png")));
@@ -121,8 +128,7 @@ class Main extends JFrame {
         drawTable.jTextArea.setEditable(false);
         JFrame jFrame = new JFrame("Output");
         jFrame.add(jScrollPane);
-        int windowSize = Toolkit.getDefaultToolkit().getScreenSize().height / 2;
-        jFrame.setSize(windowSize, windowSize);
+        jFrame.setSize(screenHeight / 2, screenHeight / 2);
         setWindowCenter(jFrame);
         jFrame.addWindowListener(new WindowAdapter() {
             @Override
@@ -193,10 +199,16 @@ class Main extends JFrame {
         main.setJMenuBar(jMenuBar);
         main.add(drawTable);
 
+        main.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                drawTable.isScreenChanged = true;
+            }
+        });
         main.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        // 直接全屏，不可改变窗口大小，彻底解决GNOME 3上显示异常的问题。这样其实是合理的，改变窗口大小意义不大，像移动端其实就是全屏。
-        GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().setFullScreenWindow(main);
-        main.setResizable(false);
+        drawTable.setPreferredSize(new Dimension(screenWidth / 2, screenHeight / 2));
+        main.pack();
+        setWindowCenter(main);
         main.setVisible(true);
     }
 }

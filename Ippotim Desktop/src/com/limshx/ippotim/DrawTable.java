@@ -196,13 +196,19 @@ class DrawTable extends JPanel implements GraphicsOperations {
         });
     }
 
+    boolean isScreenChanged = false;
     protected void paintComponent(Graphics g) {
+        // g.clearRect(0, 0, getWidth(), getHeight());也行，但还是这个好
+        super.paintComponent(g);
         this.g = g; // 总想着getGraphics()云云如何获取g，没想到可以直接在这里获取
-        g.clearRect(0, 0, getWidth(), getHeight()); // 没这句就会有重影
         ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         if (null == adapter) {
             adapter = new Adapter(this, getWidth(), getHeight(), 1);
+        }
+        if (isScreenChanged) {
+            isScreenChanged = false;
+            adapter.setScreen(getWidth(), getHeight());
         }
         adapter.paintEverything();
     }

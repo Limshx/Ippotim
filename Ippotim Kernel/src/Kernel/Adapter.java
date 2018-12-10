@@ -143,6 +143,9 @@ public class Adapter {
         for (int i = 2; i < node.getChildNodes().getLength(); i++) { // 从2开始是因为0和1已经用来给x和y赋值了
             list.treeNodes.add(importTreeNode(node.getChildNodes().item(i), list));
         }
+        if (null != preList) {
+            moveToTail(preList);
+        }
         return list;
     }
 
@@ -408,10 +411,6 @@ public class Adapter {
         }
 
         insert(createMember(s), false);
-        TreeNode t = selectedList.treeNodes.get(selectedTreeNodeIndex);
-        if (null != t.list) {
-            moveToTail(t.list);
-        }
     }
 
     private void unregisterTreeNode(TreeNode treeNode) {
@@ -558,7 +557,6 @@ public class Adapter {
                     }
                     selectedList = list;
                     selectedTreeNodeIndex = i;
-                    moveToTail(list);
                     return;
                 }
                 baseY += Rectangle.height;
@@ -597,7 +595,6 @@ public class Adapter {
     }
 
     private void sort(List list, int targetX, int targetY) {
-        moveToTail(list);
         int x = targetX - list.x;
         int y = targetY - list.y;
         moveList(list, x, y, false);
@@ -676,7 +673,7 @@ public class Adapter {
     }
 
     private void moveToTail(List list) {
-        if (!List.lists.getLast().equals(list)) {
+        if (!list.equals(List.lists.getLast())) {
             List.lists.remove(list);
             List.lists.add(list);
         }
@@ -717,7 +714,7 @@ public class Adapter {
                 rectangle.draw(targetList.x, targetList.y, false, targetList.color.stringColor, targetList.color.rectangleColor);
             }
 
-            if (null != targetList) {
+            if (null != targetList && focusedTreeNode.list != targetList) {
                 moveToTail(targetList);
             }
         }
@@ -755,6 +752,9 @@ public class Adapter {
                 focusedX = baseX;
                 focusedY = baseY;
             }
+        }
+        if (drawSubLists) {
+            moveToTail(list);
         }
         // selectedList可以为空，两个都可以为空则用Objects.equals()
         if (list.equals(selectedList)) {
