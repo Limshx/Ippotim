@@ -11,6 +11,8 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -183,7 +185,6 @@ class DrawTable extends JPanel implements GraphicsOperations {
                                    }//当鼠标在组件上移动而 不时拖动时发生
                                }
         );
-
         addMouseWheelListener(e ->
         {
             int x, y;
@@ -194,12 +195,18 @@ class DrawTable extends JPanel implements GraphicsOperations {
             adapter.doWheelRotation(x, y, scale);
             doRepaint();
         });
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                isScreenChanged = true;
+            }
+        });
     }
 
-    boolean isScreenChanged = false;
+    private boolean isScreenChanged = false;
     protected void paintComponent(Graphics g) {
-        // g.clearRect(0, 0, getWidth(), getHeight());也行，但还是这个好
-        super.paintComponent(g);
+        // super.paintComponent(g);也行，但还是这个好
+        g.clearRect(getX(), getY(), getWidth(), getHeight());
         this.g = g; // 总想着getGraphics()云云如何获取g，没想到可以直接在这里获取
         ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 

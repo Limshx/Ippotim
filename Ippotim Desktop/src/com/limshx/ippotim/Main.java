@@ -9,10 +9,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.WindowConstants;
-import java.awt.Dimension;
 import java.awt.Toolkit;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -37,8 +34,11 @@ class Main extends JFrame {
     }
 
     public static void main(String[] args) {
+        String osName = System.getProperty("os.name");
         // 开启硬件加速，启动参数里加-Dsun.java2d.opengl=true也行，但是当然还是代码里加好。
-        System.setProperty("sun.java2d.opengl", "true");
+        if (!osName.contains("Windows")) {
+            System.setProperty("sun.java2d.opengl", "true");
+        }
         initScreenSize();
         Main main = new Main("The Ippotim Programming Language");
         try {
@@ -50,7 +50,7 @@ class Main extends JFrame {
         homeDirectory = System.getProperty("user.dir") + "/";
 
         // macOS下菜单栏放到全局菜单栏
-        if (System.getProperty("os.name").contains("Mac")) {
+        if (osName.contains("Mac")) {
             System.setProperty("apple.laf.useScreenMenuBar", "true");
         }
 
@@ -199,15 +199,8 @@ class Main extends JFrame {
         main.setJMenuBar(jMenuBar);
         main.add(drawTable);
 
-        main.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                drawTable.isScreenChanged = true;
-            }
-        });
         main.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        drawTable.setPreferredSize(new Dimension(screenWidth / 2, screenHeight / 2));
-        main.pack();
+        main.setSize(screenWidth / 2, screenWidth / 2);
         setWindowCenter(main);
         main.setVisible(true);
     }
