@@ -1,5 +1,6 @@
 package Kernel;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Objects;
@@ -149,19 +150,17 @@ class Executor {
         return instance;
     }
 
-    void run(LinkedList<TreeNode> commands) {
-        run(instances, commands);
+    void run(List list) {
+        run(instances, list);
     }
 
-    private void run(HashMap<String, Instance> instances, LinkedList<TreeNode> commands) {
-        if (null == commands) {
-            return;
-        }
-
-        for (TreeNode command : commands) {
+    private void run(HashMap<String, Instance> instances, List list) {
+        // 从1开始才是语句
+        for (int index = 1; index < list.treeNodes.size(); index++) {
             if (stop || doBreak || doContinue) {
                 return;
             }
+            TreeNode command = list.treeNodes.get(index);
 //            System.out.println(command.commandType.toString() + command.elements);
             switch (command.commandType) {
                 case DEFINE: {
@@ -211,20 +210,22 @@ class Executor {
                 }
                 case IF: {
                     // 不管有没有else之子句最后一句是"else :"还是"+"，都是去头去尾
-                    LinkedList<TreeNode> listIf = getDataList(command.list);
+                    List listIf = command.list;
                     // 如果没有else，得到的就是null
-                    LinkedList<TreeNode> listElse = getDataList(command.list.treeNodes.get(command.list.treeNodes.size() - 1).list);
+                    List listElse = command.list.treeNodes.get(command.list.treeNodes.size() - 1).list;
                     HashMap<String, Instance> subInstances = new HashMap<>(instances);
 
                     if (isTrue(instances, command.elements.get(1))) {
                         run(subInstances, listIf);
                     } else {
-                        run(subInstances, listElse);
+                        if (null != listElse) {
+                            run(subInstances, listElse);
+                        }
                     }
                     break;
                 }
                 case WHILE: {
-                    LinkedList<TreeNode> listWhile = getDataList(command.list);
+                    List listWhile = command.list;
                     HashMap<String, Instance> subInstances = new HashMap<>(instances);
                     while (isTrue(instances, command.elements.get(1))) {
                         run(subInstances, listWhile);
@@ -240,7 +241,7 @@ class Executor {
                     break;
                 }
                 case FUNCTION_CALL: {
-                    run(genFunctionInstances(instances, command), getDataList(command.matchedFunction));
+                    run(genFunctionInstances(instances, command), command.matchedFunction);
                 }
             }
         }
@@ -342,7 +343,7 @@ class Executor {
 
     private HashMap<String, Instance> genFunctionInstances(HashMap<String, Instance> instances, TreeNode command) {
         HashMap<String, Instance> functionInstances = new HashMap<>();
-        String s = command.elements.getLast();
+        String s = command.elements.get(command.elements.size() - 1);
         if (!s.equals("")) {
             String[] formalParameters = s.split(", ");
             for (int i = 0; i < formalParameters.length; i++) {
@@ -354,11 +355,6 @@ class Executor {
             }
         }
         return functionInstances;
-    }
-
-    // 去掉首尾结点，即""与"+"与"else :"结点
-    static LinkedList<TreeNode> getDataList(List list) {
-        return null != list ? new LinkedList<>(list.treeNodes.subList(1, list.treeNodes.size() - 1)) : null;
     }
 
     private boolean isTheSame(HashMap<String, Instance> instances, String[] parameters) {
@@ -471,7 +467,7 @@ class Executor {
         Instance instance = getInstance(instances, booleanExpression);
         if (null != instance) {
             if ("void".equals(instance.type)) {
-                return null != instance.elements.getFirst().name;
+                return null != instance.elements.get(0).name;
             } else {
                 // 根据现有处理机制elements为空即变量为空
                 return null != instance.elements;
@@ -483,17 +479,17 @@ class Executor {
     private void setValue(Instance instance, Object value) {
         if (value instanceof Integer) {
             // 用函数调用而不是直接强制类型转换就不会报“Casting 'value' to 'int' is redundant”了。
-            instance.elements.getFirst().name = getNumber(value);
+            instance.elements.get(0).name = getNumber(value);
         } else if (value instanceof String){
-            instance.elements.getFirst().name = getString(value);
+            instance.elements.get(0).name = getString(value);
         } else {
-            instance.elements.getFirst().name = null;
+            instance.elements.get(0).name = null;
         }
     }
 
     private Object getValue(Instance instance) {
         if (null != instance && "void".equals(instance.type)) {
-            Object value = instance.elements.getFirst().name;
+            Object value = instance.elements.get(0).name;
             if (null != value) {
                 return value;
             } else {
@@ -650,9 +646,9 @@ class Executor {
         }
     }
 
-    static LinkedList<String> getRegularElements(String s) {
+    static ArrayList<String> getRegularElements(String s) {
         String separator = " ";
-        LinkedList<String> regularElements = new LinkedList<>();
+        ArrayList<String> regularElements = new ArrayList<>();
         int preIndex = 0;
         boolean hasQuote = false;
         for (int i = 0; i < s.length() - 1; i++) {

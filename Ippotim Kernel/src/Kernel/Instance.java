@@ -1,13 +1,13 @@
 package Kernel;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 
 // 变量结构
 class Instance {
     String type;
     Object name;
-    LinkedList<Instance> elements;
+    ArrayList<Instance> elements;
 
     // 对数组的实现是在此设立一个数组用以存放数组的各下标上限，使用具体的数组元素时先看数组名是否在变量表中，在的话再看各下标是否大于0且小于其上限，符合要求了再看类似a[1][2]之具体数组元素是否在arrayElements变量表里，不在就加进去再用，在就直接用
     private HashMap<String, Instance> arrayElements;
@@ -30,17 +30,19 @@ class Instance {
         if ("void".equals(type)) {
             // 基本数据类型的值设计为其唯一的元素且也是变量，暂时假装不是元素而已，这样是方便判断是不是有传统意义上的结构体元素
             // 本来是结构体系定义有元素的则初始化elements，不过基本数据类型的值设计为其元素了，所以一起初始化
-            this.elements = new LinkedList<>();
+            this.elements = new ArrayList<>();
             this.elements.add(new Instance());
         } else {
             if (initElements) {
                 // 本来是结构体系定义有元素的则初始化elements，不过基本数据类型的值设计为其元素了，所以一起初始化
-                this.elements = new LinkedList<>();
-                LinkedList<TreeNode> elements = Executor.getDataList(Adapter.structures.get(type));
+                this.elements = new ArrayList<>();
+                List elements = Adapter.structures.get(type);
                 if (null != elements) {
-                    for (TreeNode element : elements) {
+                    // 从1开始才是语句
+                    for (int i = 1; i < elements.treeNodes.size(); i++) {
                         // 如果结构体元素中有基本数据类型元素，则初始化
-                        this.elements.add(new Instance(element.elements.get(0), element.elements.get(1), false));
+                        TreeNode t = elements.treeNodes.get(i);
+                        this.elements.add(new Instance(t.elements.get(0), t.elements.get(1), false));
                     }
                 }
             }

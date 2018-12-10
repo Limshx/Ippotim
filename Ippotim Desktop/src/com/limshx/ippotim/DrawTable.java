@@ -58,10 +58,6 @@ class DrawTable extends JPanel implements GraphicsOperations {
                     break;
             }
             doRepaint();
-        } else {
-            if (type.equals("Member")) {
-                adapter.insert("");
-            }
         }
     }
 
@@ -97,6 +93,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
 
     StringBuilder stringBuilder;
     private boolean hasSoftWrap;
+
     private void getOutput(String s) {
         if (s.equals("\n")) {
             if (hasSoftWrap) {
@@ -150,16 +147,17 @@ class DrawTable extends JPanel implements GraphicsOperations {
     DrawTable() {
         addMouseListener(new MouseListener() {
                              public void mousePressed(MouseEvent e) {
-                                 adapter.setXY(e.getX(), e.getY());
-                                 if (e.isMetaDown()) { // 右键新建函数定义
-                                     create("Function");
-                                 } else if (e.getClickCount() == 2) // 双击新建结构定义
-                                 {
-                                     create("Structure");
-                                 } else {
-                                     adapter.click();
-                                     doRepaint();
+                                 adapter.click(e.getX(), e.getY());
+                                 if (!adapter.hasSelectedTreeNode()) {
+                                     if (e.isMetaDown()) { // 右键新建函数定义
+                                         create("Function");
+                                         return;
+                                     } else if (e.getClickCount() == 2) { // 双击新建结构定义
+                                         create("Structure");
+                                         return;
+                                     }
                                  }
+                                 doRepaint();
                              }//当用户按下鼠标按钮时发生
 
                              public void mouseReleased(MouseEvent e) {
@@ -198,7 +196,6 @@ class DrawTable extends JPanel implements GraphicsOperations {
         });
     }
 
-    boolean isScreenChanged = false;
     protected void paintComponent(Graphics g) {
         this.g = g; // 总想着getGraphics()云云如何获取g，没想到可以直接在这里获取
         g.clearRect(0, 0, getWidth(), getHeight()); // 没这句就会有重影
@@ -206,10 +203,6 @@ class DrawTable extends JPanel implements GraphicsOperations {
 
         if (null == adapter) {
             adapter = new Adapter(this, getWidth(), getHeight(), 1);
-        }
-        if (isScreenChanged) {
-            isScreenChanged = false;
-            adapter.setScreen(getWidth(), getHeight());
         }
         adapter.paintEverything();
     }

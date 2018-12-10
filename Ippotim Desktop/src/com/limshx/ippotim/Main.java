@@ -9,9 +9,8 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.WindowConstants;
+import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -122,8 +121,7 @@ class Main extends JFrame {
         drawTable.jTextArea.setEditable(false);
         JFrame jFrame = new JFrame("Output");
         jFrame.add(jScrollPane);
-        int defaultWindowSize = 600;
-        int windowSize = defaultWindowSize / 2;
+        int windowSize = Toolkit.getDefaultToolkit().getScreenSize().height / 2;
         jFrame.setSize(windowSize, windowSize);
         setWindowCenter(jFrame);
         jFrame.addWindowListener(new WindowAdapter() {
@@ -193,18 +191,12 @@ class Main extends JFrame {
         jMenu.add(jMenuItems[6]);
         jMenuBar.add(jMenu);
         main.setJMenuBar(jMenuBar);
-
         main.add(drawTable);
-        main.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                drawTable.isScreenChanged = true;
-            }
-        });
 
         main.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        main.setSize(defaultWindowSize, defaultWindowSize);
-        setWindowCenter(main);
+        // 直接全屏，不可改变窗口大小，彻底解决GNOME 3上显示异常的问题。这样其实是合理的，改变窗口大小意义不大，像移动端其实就是全屏。
+        GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().setFullScreenWindow(main);
+        main.setResizable(false);
         main.setVisible(true);
     }
 }

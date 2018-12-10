@@ -73,24 +73,25 @@ public class DrawTable extends View implements GraphicsOperations {
         switch (motionEvent.getAction()) {
             case MotionEvent.ACTION_UP:
                 // 多点触控似乎所有手指都移开才判断为UP
-                if (!doneScale) {
-                    doneScale = true;
-                }
-                baseValue = 0;
+                doneScale = true;
                 doLongClick = true;
+                baseValue = 0;
                 break;
             case MotionEvent.ACTION_DOWN:
                 preX = motionEvent.getX();
                 preY = motionEvent.getY();
-                long currentClickTime = System.currentTimeMillis();
-                if (currentClickTime - preClickTime < 300) {
-                    create("Structure");
+                adapter.click((int) preX, (int) preY);
+                if (!adapter.hasSelectedTreeNode()) {
+                    long currentClickTime = System.currentTimeMillis();
+                    if (currentClickTime - preClickTime < 300) {
+                        create("Structure");
+                        return true;
+                    }
+                    preClickTime = currentClickTime;
                 } else {
-                    adapter.setXY((int) preX, (int) preY);
-                    adapter.click();
-                    doRepaint();
+                    doLongClick = false;
                 }
-                preClickTime = currentClickTime;
+                doRepaint();
                 break;
             case MotionEvent.ACTION_MOVE:
                 float xv, yv;
@@ -180,9 +181,6 @@ public class DrawTable extends View implements GraphicsOperations {
         InfoBox infoBox = new InfoBox(title, "Cancel", "OK", new EditText(context), context) {
             @Override
             void onNegative() {
-                if (type.equals("Member")) {
-                    adapter.insert("");
-                }
             }
 
             @Override
