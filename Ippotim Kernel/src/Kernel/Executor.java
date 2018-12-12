@@ -4,20 +4,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Objects;
+import java.util.Stack;
 
 class Executor {
     boolean stop = false;
     boolean doBreak = false;
     private boolean doContinue = false;
-    // 集合变量
-    private HashMap<String, Instance> instances = new HashMap<>();
+    // 保存函数调用堆栈，主要用以获取当前执行的函数。
+    static Stack<List> functionStack = new Stack<>();
 
-    private Instance getArrayInstance(HashMap<String, Instance> instances, Instance instance, String arrayPart) {
+    private Instance getArrayInstance(List list, Instance instance, String arrayPart) {
         if (!arrayPart.equals("")) {
             LinkedList<String> arrayChains = getChains(arrayPart, false);
             StringBuilder nameOfArrayInstanceBuilder = new StringBuilder();
             for (String arrayChain : arrayChains) {
-                nameOfArrayInstanceBuilder.append(getNumber(instances, arrayChain)).append(" ");
+                nameOfArrayInstanceBuilder.append(getNumber(list, arrayChain)).append(" ");
             }
             String nameOfArrayInstance = nameOfArrayInstanceBuilder.deleteCharAt(nameOfArrayInstanceBuilder.length() - 1).toString();
             // arrayElements为null的时候其实elements也是null，类似S s; s[0].next[0] = s[0];的时候会为null，因为添加实例的elements的时候因为不能死循环所以initElements是false。
@@ -97,7 +98,7 @@ class Executor {
         return elementName;
     }
 
-    private Instance getInstance(HashMap<String, Instance> instances, Instance fatherInstance, String instanceName) {
+    private Instance getInstance(List list, Instance fatherInstance, String instanceName) {
         if (null != fatherInstance) {
             for (Instance element : fatherInstance.elements) {
                 if (null != element.name) {
@@ -108,33 +109,39 @@ class Executor {
             }
             return null;
         } else {
-            return instances.get(instanceName);
+            // 先从局部变量表找，找不到再从全局变量表找，局部变量表是针对条件语句和循环语句的优化方案。
+            Instance instance = null;
+            while (null == instance && null != list) {
+                instance = list.getInstances().get(instanceName);
+                list = list.preList;
+            }
+            return instance;
         }
     }
 
-    private Instance getElementInstance(HashMap<String, Instance> instances, Instance instance, String instanceName) {
+    private Instance getElementInstance(List list, Instance instance, String instanceName) {
         Instance elementInstance;
         String[] elementName = getElementName(instanceName);
 //        System.out.println((null != instance ? instance.type : "null") + Arrays.toString(elementName));
         if (null != elementName[1]) {
             // 本来这里是headInstance，也就是第一层小括号里面的字符串对应的变量，要先计算或者说得到，不过直接用instance就成，压缩代码也是一种技巧或者说艺术或者说算法或者说方法论，所以会觉得很奇妙很能体现智慧。
-            elementInstance = getElementInstance(instances, instance, elementName[1]);
+            elementInstance = getElementInstance(list, instance, elementName[1]);
         } else {
-            elementInstance = getInstance(instances, instance, elementName[0]);
+            elementInstance = getInstance(list, instance, elementName[0]);
         }
         // 在getArrayInstance()前判空就不用在getArrayInstance()里面判了，getArrayInstance()肯定不会返回空，这也是一种优化，如何优化是一门学问。
         // 对elementInstance.type判空是说常量不能作为变量使用，之现在的设计是常量保存在type为空的变量中。
         if (null == elementInstance || null == elementInstance.type) {
             return null;
         }
-        return getArrayInstance(instances, elementInstance, elementName[2]);
+        return getArrayInstance(list, elementInstance, elementName[2]);
         // 结构变量为null就是elements为空集
         // 现在设计成基本数据类型也有元素之其值就是其唯一的元素了，所以这里要判空也是从其结构体定义判，不过可能会导致性能进一步损失，直接删掉进入下面的统一流程更好
         // 给数据结构起复数名可以方便遍历时候临时变量命名
     }
 
     // 之前是方法重载实现局部变量功能，使用新方案后就不用了
-    private Instance getInstance(HashMap<String, Instance> instances, String instanceName) {
+    private Instance getInstance(List list, String instanceName) {
         if (!getType(instanceName).equals("instance")) {
             return null;
         }
@@ -142,7 +149,7 @@ class Executor {
         // 一般的形式是类似a[a[a+a].a[a+a]].a[a[a+a].a[a+a]]，这样是不能简单split的，需要像括号匹配那样进行整体分离。
         LinkedList<String> elementChains = getChains(instanceName, true);
         for (String elementChain : elementChains) {
-            instance = getElementInstance(instances, instance, elementChain);
+            instance = getElementInstance(list, instance, elementChain);
             if (null == instance) {
                 return null;
             }
@@ -150,11 +157,7 @@ class Executor {
         return instance;
     }
 
-    void run(List list) {
-        run(instances, list);
-    }
-
-    private void run(HashMap<String, Instance> instances, List list) {
+    private void run(List list) {
         // 从1开始才是语句
         for (int index = 1; index < list.treeNodes.size(); index++) {
             if (stop || doBreak || doContinue) {
@@ -169,21 +172,23 @@ class Executor {
                     // 从1开始是因为0是结构名
                     for (int i = 1; i < command.elements.size(); i++) {
                         Instance instance = new Instance(command.elements.get(0), command.elements.get(i));
-                        instances.put(command.elements.get(i), instance);
+                        // 只往局部或者说本地变量表定义或者说注册新变量。
+                        list.getInstances().put(command.elements.get(i), instance);
                     }
                     break;
                 }
                 case ASSIGN: {
-                    assign(instances, command.elements.get(2), instances, command.elements.get(0));
+                    Instance to = getInstance(list, command.elements.get(0));
+                    assign(list, command.elements.get(2), to, false);
                     break;
                 }
                 case INPUT: {
                     // 从1开始是因为0是“input”。
                     // input设计为赋值语句的手动模式，也即input后可接任意void变量，用户输入的可以是任意表达式和或者说包括任意变量名。
                     for (int i = 1; i < command.elements.size(); i++) {
-                        Instance instance = getInstance(instances, command.elements.get(i));
+                        Instance instance = getInstance(list, command.elements.get(i));
                         if (null != instance && "void".equals(instance.type)) {
-                            setValue(instance, getValue(instances, Adapter.graphicsOperations.getInput((String) instance.name)));
+                            setValue(instance, getValue(list, Adapter.graphicsOperations.getInput((String) instance.name)));
                         }
                     }
                     break;
@@ -196,7 +201,7 @@ class Executor {
                         // 从1开始是因为0是“output”了，像这种以及case不加break等不合常规的行为都应添加注释或者说说明
                         for (int i = 1; i < command.elements.size(); i++) {
                             String element = command.elements.get(i);
-                            Object value = getValue(instances, element);
+                            Object value = getValue(list, element);
                             if (null != value) {
                                 stringBuilder.append(value);
                             }
@@ -213,22 +218,19 @@ class Executor {
                     List listIf = command.list;
                     // 如果没有else，得到的就是null
                     List listElse = command.list.treeNodes.get(command.list.treeNodes.size() - 1).list;
-                    HashMap<String, Instance> subInstances = new HashMap<>(instances);
-
-                    if (isTrue(instances, command.elements.get(1))) {
-                        run(subInstances, listIf);
+                    if (isTrue(list, command.elements.get(1))) {
+                        run(listIf);
                     } else {
                         if (null != listElse) {
-                            run(subInstances, listElse);
+                            run(listElse);
                         }
                     }
                     break;
                 }
                 case WHILE: {
                     List listWhile = command.list;
-                    HashMap<String, Instance> subInstances = new HashMap<>(instances);
-                    while (isTrue(instances, command.elements.get(1))) {
-                        run(subInstances, listWhile);
+                    while (isTrue(list, command.elements.get(1))) {
+                        run(listWhile);
                     }
                     break;
                 }
@@ -241,12 +243,58 @@ class Executor {
                     break;
                 }
                 case FUNCTION_CALL: {
-                    run(genFunctionInstances(instances, command), command.matchedFunction);
+                    run(list, command.matchedFunction, command);
+                    break;
                 }
+                default:
+                    break;
             }
         }
-        // 清空变量表，这个本来主要是为的清空while语句新建的变量表，认为这样就简单也巧妙地实现匿名变量了，不过后来发现根据原来新建同名变量会覆盖原有变量的机制也不影响匿名变量实现，本来又以为反正没用了清空也无妨，但while语句的变量表事先用主句的变量表中的元素初始化了，所以不应清空。
-        // instances.clear();
+    }
+
+    void run(List preFunction, List function, TreeNode command) {
+        String functionName = null != command ? command.elements.get(0) : "";
+        // 要复制一份，不然递归调用的时候会影响到后面的语句。
+        HashMap<String, Instance> templateFunctionInstances = Adapter.functionNameToInstances.get(functionName);
+        HashMap<String, Instance> functionInstances = getFunctionInstances(templateFunctionInstances);
+        if (!functionInstances.isEmpty() && null != command) {
+            setFunctionInstances(preFunction, command, functionInstances);
+        }
+        functionStack.push(function);
+        function.level += 1;
+        function.putInstances(functionInstances);
+        run(function);
+        function.level -= 1;
+        functionStack.pop();
+    }
+
+    private HashMap<String, Instance> getFunctionInstances(HashMap<String, Instance> templateFunctionInstances) {
+        HashMap<String, Instance> functionInstances = new HashMap<>();
+        for (Instance instance : templateFunctionInstances.values()) {
+            functionInstances.put((String) instance.name, new Instance(instance.type, (String) instance.name));
+        }
+        return functionInstances;
+    }
+
+    static HashMap<String, Instance> getFunctionInstances(String parameters) {
+        HashMap<String, Instance> functionInstances = new HashMap<>();
+        if (!parameters.equals("")) {
+            String[] formalParameters = parameters.split(", ");
+            for (String formalParameter : formalParameters) {
+                String[] typeAndName = formalParameter.split(" ");
+                Instance formalInstance = new Instance(typeAndName[0], typeAndName[1]);
+                functionInstances.put(typeAndName[1], formalInstance);
+            }
+        }
+        return functionInstances;
+    }
+
+    private void setFunctionInstances(List list, TreeNode command, HashMap<String, Instance> functionInstances) {
+        int size = command.elements.size() / 2;
+        // 第0个是函数名，第1个开始是实参名
+        for (int i = 0; i < size; i++) {
+            assign(list, command.elements.get(i + 1), functionInstances.get(command.elements.get(size + i + 1)), true);
+        }
     }
 
     private void assign(Instance from, Instance to, boolean treatAsGeneral) {
@@ -257,25 +305,22 @@ class Executor {
         }
     }
 
-    private void assign(HashMap<String, Instance> instancesFrom, String stringFrom, Instance to) {
-        setValue(to, getValue(instancesFrom, stringFrom));
+    private void assign(List listFrom, String stringFrom, Instance to) {
+        setValue(to, getValue(listFrom, stringFrom));
     }
 
-    private void assign(HashMap<String, Instance> instancesFrom, String stringFrom, HashMap<String, Instance> instancesTo, String stringTo) {
+    private void assign(List listFrom, String stringFrom, Instance to, boolean isFunctionCall) {
         Instance from;
-        Instance to = getInstance(instancesTo, stringTo);
         if (null != to) {
-            from = getInstance(instancesFrom, stringFrom);
+            from = getInstance(listFrom, stringFrom);
             if (null != from) {
-                boolean treatAsGeneral = !to.type.equals("void");
-                // 当instancesFrom与instancesTo不同，说明是函数调用时的赋值操作。
-                if (!instancesFrom.equals(instancesTo)) {
-                    treatAsGeneral = true;
+                boolean treatAsGeneral = !to.type.equals("void") || isFunctionCall;
+                if (isFunctionCall) {
                     to.setArrayElements(from.getArrayElements());
                 }
                 assign(from, to, treatAsGeneral);
             } else {
-                assign(instancesFrom, stringFrom, to);
+                assign(listFrom, stringFrom, to);
             }
         }
     }
@@ -341,26 +386,10 @@ class Executor {
         }
     }
 
-    private HashMap<String, Instance> genFunctionInstances(HashMap<String, Instance> instances, TreeNode command) {
-        HashMap<String, Instance> functionInstances = new HashMap<>();
-        String s = command.elements.get(command.elements.size() - 1);
-        if (!s.equals("")) {
-            String[] formalParameters = s.split(", ");
-            for (int i = 0; i < formalParameters.length; i++) {
-                String[] typeAndName = formalParameters[i].split(" ");
-                Instance instanceFormal = new Instance(typeAndName[0], typeAndName[1]);
-                functionInstances.put(typeAndName[1], instanceFormal);
-                // 第0个是函数名，第1个开始是实参名
-                assign(instances, command.elements.get(i + 1), functionInstances, typeAndName[1]);
-            }
-        }
-        return functionInstances;
-    }
-
-    private boolean isTheSame(HashMap<String, Instance> instances, String[] parameters) {
+    private boolean isTheSame(List list, String[] parameters) {
         Instance[] instance = new Instance[2];
-        instance[0] = getInstance(instances, parameters[0]);
-        instance[1] = getInstance(instances, parameters[1]);
+        instance[0] = getInstance(list, parameters[0]);
+        instance[1] = getInstance(list, parameters[1]);
         if (null != instance[0] && null != instance[1]) {
             if (!instance[0].type.equals("void") && !instance[1].type.equals("void")) {
                 return Objects.equals(instance[0].elements, instance[1].elements);
@@ -368,29 +397,29 @@ class Executor {
                 return Objects.equals(getValue(instance[0]), getValue(instance[1]));
             }
         } else {
-            return Objects.equals(getValue(instances, parameters[0]), getValue(instances, parameters[1]));
+            return Objects.equals(getValue(list, parameters[0]), getValue(list, parameters[1]));
         }
     }
 
-    private boolean compare(HashMap<String, Instance> instances, String[] parameters, String operation) {
+    private boolean compare(List list, String[] parameters, String operation) {
         switch (operation) {
             case "<": {
-                return getNumber(instances, parameters[0]) < getNumber(instances, parameters[1]);
+                return getNumber(list, parameters[0]) < getNumber(list, parameters[1]);
             }
             case "<=": {
-                return getNumber(instances, parameters[0]) <= getNumber(instances, parameters[1]);
+                return getNumber(list, parameters[0]) <= getNumber(list, parameters[1]);
             }
             case "==": {
-                return isTheSame(instances, parameters);
+                return isTheSame(list, parameters);
             }
             case "!=": {
-                return !isTheSame(instances, parameters);
+                return !isTheSame(list, parameters);
             }
             case ">=": {
-                return getNumber(instances, parameters[0]) >= getNumber(instances, parameters[1]);
+                return getNumber(list, parameters[0]) >= getNumber(list, parameters[1]);
             }
             case ">": {
-                return getNumber(instances, parameters[0]) > getNumber(instances, parameters[1]);
+                return getNumber(list, parameters[0]) > getNumber(list, parameters[1]);
             }
             default: {
                 return false;
@@ -398,16 +427,16 @@ class Executor {
         }
     }
 
-    private boolean isTrue(HashMap<String, Instance> instances, String booleanExpression, int start, int end, int preOperation, boolean result) {
+    private boolean isTrue(List list, String booleanExpression, int start, int end, int preOperation, boolean result) {
         String subExpression = booleanExpression.substring(start, end);
         if (0 == preOperation) {
-            return result && isTrue(instances, subExpression);
+            return result && isTrue(list, subExpression);
         } else {
-            return result || isTrue(instances, subExpression);
+            return result || isTrue(list, subExpression);
         }
     }
 
-    private boolean isTrue(HashMap<String, Instance> instances, String booleanExpression) {
+    private boolean isTrue(List list, String booleanExpression) {
         // break本就是针对或者说面向或者说基于while的，放到这里实现挺好
         if (doBreak) {
             doBreak = false;
@@ -417,7 +446,7 @@ class Executor {
             doContinue = false; // 似乎不用判断直接置为false即可或者说也是一样的
         }
         if (booleanExpression.startsWith("!")) {
-            return !isTrue(instances, booleanExpression.substring(1));
+            return !isTrue(list, booleanExpression.substring(1));
         }
 
         boolean result = true;
@@ -433,7 +462,7 @@ class Executor {
                 String s = booleanExpression.substring(nextStart);
                 if (s.startsWith("&&") || s.startsWith("||")) {
                     metOperation = true;
-                    result = isTrue(instances, booleanExpression, start, nextStart, preOperation, result);
+                    result = isTrue(list, booleanExpression, start, nextStart, preOperation, result);
                     preOperation = s.startsWith("&&") ? 0 : 1;
                     nextStart += 2; // 暂时写死为2
                     start = nextStart;
@@ -441,30 +470,30 @@ class Executor {
             } else if (0 == start) {
                 if ('(' == booleanExpression.charAt(0)) {
                     String subExpression = booleanExpression.substring(1, booleanExpression.length() - 1);
-                    return isTrue(instances, subExpression);
+                    return isTrue(list, subExpression);
                 }
             } else {
-                result = isTrue(instances, booleanExpression, start, nextStart, preOperation, result);
+                result = isTrue(list, booleanExpression, start, nextStart, preOperation, result);
             }
         }
         if (!metOperation) {
-            return isTrueBasic(instances, booleanExpression);
+            return isTrueBasic(list, booleanExpression);
         }
         return result;
     }
 
     // 布尔表达式设计成不允许字符串和数字直接或者说单独出现之类似if 1或if "1"，允许变量名和比较表达式。至于||与&&之类的复合布尔表达式，理应是要加上的，只是需要一种优雅的方法，最好与数字运算统一起来。一般的形式当然是有小括号有与或非，为简化设计，与或非皆用以连接子布尔表达式，除了单独出现的变量名之判断是否非空，都要加小括号，只有一条布尔表达式则可用可不用。合法的表达式是类似：a、!a、a<b、!(a<b)、!(a<b)||(!(a<b)&&!(a<b))，这里类似!!!a其实也是合法的，暂酱紫。
-    private boolean isTrueBasic(HashMap<String, Instance> instances, String booleanExpression) {
+    private boolean isTrueBasic(List list, String booleanExpression) {
         // 本来这里只保留< = >这3个就可以了，注意这里用了=而不是==，因为不允许布尔表达式中赋值的话就没必要两个等号表示等于了。不过考虑到所有主流的程序设计语言都是支持所有这些比较符的，尤其等于用=而不是==的话就是冒天下之大不韪了，故暂保留所有。
         // 这里像"<="要放在或者说排在"<"前面，不然就识别不到前者了。
         String[] comparisonOperators = {"<=", "<", "==", "!=", ">=", ">"};
         for (String comparisonOperator : comparisonOperators) {
             String[] elements = booleanExpression.split(comparisonOperator);
             if (elements.length == 2) {
-                return compare(instances, elements, comparisonOperator);
+                return compare(list, elements, comparisonOperator);
             }
         }
-        Instance instance = getInstance(instances, booleanExpression);
+        Instance instance = getInstance(list, booleanExpression);
         if (null != instance) {
             if ("void".equals(instance.type)) {
                 return null != instance.elements.get(0).name;
@@ -480,7 +509,7 @@ class Executor {
         if (value instanceof Integer) {
             // 用函数调用而不是直接强制类型转换就不会报“Casting 'value' to 'int' is redundant”了。
             instance.elements.get(0).name = getNumber(value);
-        } else if (value instanceof String){
+        } else if (value instanceof String) {
             instance.elements.get(0).name = getString(value);
         } else {
             instance.elements.get(0).name = null;
@@ -500,14 +529,14 @@ class Executor {
         return null;
     }
 
-    private Object getValue(HashMap<String, Instance> instances, String instanceName) {
+    private Object getValue(List list, String instanceName) {
         String type = getType(instanceName);
         if (type.equals("instance")) {
-            return getValue(getInstance(instances, instanceName));
+            return getValue(getInstance(list, instanceName));
         } else if (type.equals("string")) {
-            return getString(instances, instanceName);
+            return getString(list, instanceName);
         } else {
-            return getNumber(instances, instanceName);
+            return getNumber(list, instanceName);
         }
     }
 
@@ -529,7 +558,7 @@ class Executor {
     }
 
     // 还有一个问题，似乎number、string类型变量与数字、字符串常量的映射表也要作局部变量处理
-    private String getString(HashMap<String, Instance> instances, String instanceName) {
+    private String getString(List list, String instanceName) {
         // 双引号不设转义字符的话似乎无法正确处理一般字符串，故设计为字符串内不允许出现双引号之取字符串的真子集，其实也不影响功能，至少可以用单引号代替。
         // 这里是递归关系，不能instanceName.split("\\?")。
         LinkedList<String> parts = getParts(instanceName);
@@ -537,14 +566,14 @@ class Executor {
         if ('"' == parts.get(0).charAt(0)) {
             string = parts.get(0).substring(1, parts.get(0).length() - 1);
         } else {
-            Object value = getValue(instances, parts.get(0));
+            Object value = getValue(list, parts.get(0));
             string = null != value ? String.valueOf(value) : null;
         }
         if (1 == parts.size()) {
             return string;
         } else {
             if (null != string) {
-                int index = getNumber(instances, parts.get(1));
+                int index = getNumber(list, parts.get(1));
                 if (0 <= index && index < string.length()) {
                     return String.valueOf(string.charAt(index));
                 } else {
@@ -585,7 +614,7 @@ class Executor {
     private char[][] operations = {{'+', '-'}, {'*', '/'}};
 
     // operationType决定是加减运算还是乘除运算，0表示加减，1表示乘除
-    private Integer getNumber(HashMap<String, Instance> instances, String instanceName, int operationType) {
+    private Integer getNumber(List list, String instanceName, int operationType) {
         int value = 0 == operationType ? 0 : 1;
 //        boolean metOperation = false;
         // 上一个运算符是否+或*，1表示是，-1表示不是
@@ -598,19 +627,19 @@ class Executor {
             if (nextStart < instanceName.length()) {
                 if (instanceName.charAt(nextStart) == operations[operationType][0] || instanceName.charAt(nextStart) == operations[operationType][1]) {
 //                    metOperation = true;
-                    value = getNumber(value, getNumber(instances, instanceName.substring(start, nextStart)), addOrMul, operationType);
+                    value = getNumber(value, getNumber(list, instanceName.substring(start, nextStart)), addOrMul, operationType);
                     addOrMul = instanceName.charAt(nextStart) == operations[operationType][0] ? 1 : -1;
                     start = nextStart + 1;
                 }
             } else if (0 == start) {
                 if (1 == operationType && '(' == instanceName.charAt(0)) {
-                    return getNumber(instances, instanceName.substring(1, instanceName.length() - 1));
+                    return getNumber(list, instanceName.substring(1, instanceName.length() - 1));
                 }
                 // start为0说明没有遇到运算符
                 return null;
             } else {
                 // 调用本函数之前先整体判断了下，如果整个字符串是一个变量名，就不会进来这里了，所以走到这一步说明之前是遇到了操作符的。
-                value = getNumber(value, getNumber(instances, instanceName.substring(start, nextStart)), addOrMul, operationType);
+                value = getNumber(value, getNumber(list, instanceName.substring(start, nextStart)), addOrMul, operationType);
             }
         }
 //        if (!metOperation) {
@@ -626,11 +655,11 @@ class Executor {
     // 文法处理是一种典型的问题，因为要考虑很多情况，当然从高层级入手之少生多复合就可以轻松解决。要考虑可以获取那些元素，获取后该怎么用，比如a[2][2]这种就可以获取a、2、2,然后如何根据得到的数据达到目的。像算式解析算法这种，黑盒测试之无论数据集有多大都是不行的，必须从高层级之审视算法本身的正确性，这就是其数学本质或者说广义运算或者说广义计算本质。所谓KISS原则，并不是说就可以随便给出一些很蠢的方案，不然也就没必要研究算法了，只是说不要在一些无谓的细节上炫技。
     // 似信息检索很重要，我们面对一些问题，要尽可能从根源检索，一般是官方文档、API等，了解问题基本知识背景，然后才是问题编译说之考虑解决方案。
     // 只支持int是因为只关注离散量
-    private Integer getNumber(HashMap<String, Instance> instances, String instanceName) {
+    private Integer getNumber(List list, String instanceName) {
         try {
             return Integer.parseInt(instanceName); // 数太大溢出会导致解析错误无限循环，这个提前报错即可，报错功能后续会添加
         } catch (NumberFormatException e) {
-            Instance instance = getInstance(instances, instanceName);
+            Instance instance = getInstance(list, instanceName);
             if (null != instance) {
                 return (Integer) getValue(instance);
             }
@@ -640,7 +669,7 @@ class Executor {
                 if (null != value) {
                     return value;
                 }
-                value = getNumber(instances, instanceName, i);
+                value = getNumber(list, instanceName, i);
             }
             return value;
         }
@@ -665,22 +694,45 @@ class Executor {
         return regularElements;
     }
 
+    static String getListHead(List list) {
+        return list.treeNodes.get(0).rectangle.getContent();
+    }
+
+    private static String getParameters(List function) {
+        String[] strings = getListHead(function).split(" ", 3);
+        return 3 == strings.length ? strings[2] : "";
+    }
+
+    private static ArrayList<String> getFormalInstanceNames(String parameters) {
+        ArrayList<String> formalInstanceNames = new ArrayList<>();
+        if (!parameters.equals("")) {
+            String[] formalParameters = parameters.split(", ");
+            for (String formalParameter : formalParameters) {
+                String[] typeAndName = formalParameter.split(" ");
+                formalInstanceNames.add(typeAndName[1]);
+            }
+        }
+        return formalInstanceNames;
+    }
+
     // 函数调用如果还是由变量类型序列确定的话，似乎得运行时才能够做到了。其实不需要，至少对于现在的设计而言，通过处理之前的定义语句即可。这里要注意的是：getCommandType()应当是面向一个TreeNode组的，毕竟main函数也是函数，而函数被设计成比较完美的沙盒机制。至于说使用传统的函数名设计，其实也要校验参数类型，所以直接砍掉函数名也是合理的。这个首先需要找到执行到函数调用语句前执行到的所有语句，可以倒推回去，先找到所在组的首结点，然后找到所在子句的主句，然后再找到主句所在的组的首结点，得到所有的定义语句；难在根据子句找主句。可以遍历vectorLine找到主句的矩形编号，然后遍历vectorRectangle找到组号。这样是可行的，但效率太低了，不如修改TreeNode定义，添加一个指向主句的指针，空间复杂度换时间复杂度。即便如此，对于每一个函数调用语句都回溯似乎也是不可忍受的，只能深度优先遍历之对于函数集合中的每一个函数进行深度优先遍历，这样指向前驱结点的指针preTreeNode也可以不要了。
     // 之所以要添加预编译就是想要去掉频繁查表的开销，然而还有1张表没有去掉，这就是变量表。变量表似乎不能通过预编译去掉，像C语言对于变量的处理或者说实现应该是借助各种寻址方式，其实变量都是由定义语句生成的，如此说来变量确实可以在预编译时
     static CommandType getCommandType(TreeNode command) {
         String fistElement = command.elements.get(0);
+        // 赋值语句认定放在定义语句和函数调用语句认定之前就可以让变量名与结构名或函数名重名了。
+        if (3 == command.elements.size() && command.elements.get(1).equals("=")) {
+            return CommandType.ASSIGN;
+        }
         if (Adapter.structures.containsKey(fistElement)) {
             // 结构定义还是通过结构名查表得，不然函数调用的时候新建Instance不好传入指向结构定义的链表
             // command.matchedStructureOrFunction = setStructures.get(command.elements.get(0));
             return CommandType.DEFINE; // 定义语句需要查结构表，实际可以像函数调用那样处理之直接获取结构所在组号这样就不用查了，令结构所在组号为g，则预编译号可以设计成(-8-g)。不过只是得到组号的话还是要根据组号查表才能得到数据，这与根据结构名查表似乎没什么两样。除非将结构所在的组置为定义语句的子句，这样就还需要设置一个标志位表示该子句是临时的，第二次运行时执行本函数会检查该标志位，子句是临时的则先将子句置为null。这样也不用保存组号了，函数调用也应这样处理。其实这样也不好，最好是新增一个链表元素。由于不用保存组号了，这样就可以用enum保存语句类型了。
         }
         if (Adapter.functions.containsKey(fistElement)) {
-            command.elements.add(Adapter.functionNameToParameters.get(fistElement));
             command.matchedFunction = Adapter.functions.get(fistElement);
+            String parameters = getParameters(command.matchedFunction);
+            command.elements.addAll(getFormalInstanceNames(parameters));
             return CommandType.FUNCTION_CALL;
-        }
-        if (3 == command.elements.size() && command.elements.get(1).equals("=")) {
-            return CommandType.ASSIGN;
         }
         switch (fistElement) {
             case "input":

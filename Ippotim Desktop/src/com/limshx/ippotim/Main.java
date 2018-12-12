@@ -1,6 +1,7 @@
 package com.limshx.ippotim;
 
 import javax.imageio.ImageIO;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -10,6 +11,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.WindowConstants;
 import java.awt.Toolkit;
+import java.awt.event.ItemEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -20,6 +22,7 @@ class Main extends JFrame {
     private Main(String s) {
         super(s);
     }
+
     private static File openedFile;
     private static String homeDirectory;
     private static int screenWidth, screenHeight;
@@ -35,9 +38,15 @@ class Main extends JFrame {
 
     public static void main(String[] args) {
         String osName = System.getProperty("os.name");
-        // 开启硬件加速，启动参数里加-Dsun.java2d.opengl=true也行，但是当然还是代码里加好。
-        if (!osName.contains("Windows")) {
-            System.setProperty("sun.java2d.opengl", "true");
+        File opengl = new File(System.getProperty("user.dir") + "/OpenGL");
+        if (osName.contains("Linux")) {
+            if (opengl.exists()) {
+                // 开启硬件加速，启动参数里加-Dsun.java2d.opengl=true也行，但是当然还是代码里加好。
+                // 考虑到Linux下开启加速可能会出现各种问题，而Windows和macOS下应该是由于图形界面接口比较统一稳定所以JDK对绘图进行了默认加速，Windows下像这样开启加速反而也会出问题，故代码里去掉加速设置，Linux下可按需通过启动参数开启加速。
+                if (!osName.contains("Windows")) {
+                    System.setProperty("sun.java2d.opengl", "true");
+                }
+            }
         }
         initScreenSize();
         Main main = new Main("The Ippotim Programming Language");
@@ -63,7 +72,6 @@ class Main extends JFrame {
 //        drawTable.setPreferredSize(new Dimension(drawTable.windowSize, drawTable.windowSize));
 //        JScrollPane scr1 = new JScrollPane(drawTable, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 //        cont.add(scr1);
-
         JMenuBar jMenuBar = new JMenuBar();
         JMenu jMenu;
         JMenuItem[] jMenuItems = new JMenuItem[7];
@@ -79,7 +87,7 @@ class Main extends JFrame {
             if (null != file) {
                 openedFile = file;
                 homeDirectory = openedFile.getParent() + "/";
-                JOptionPane.showMessageDialog(null,"Imported \"" + openedFile.getName() + "\"");
+                JOptionPane.showMessageDialog(null, "Imported \"" + openedFile.getName() + "\"");
                 drawTable.adapter.getCodeFromXml(openedFile);
                 drawTable.doRepaint();
             }
@@ -196,6 +204,35 @@ class Main extends JFrame {
         jMenu.add(jMenuItems[5]);
         jMenu.add(jMenuItems[6]);
         jMenuBar.add(jMenu);
+        if (osName.contains("Linux")) {
+            jMenu = new JMenu("Tools");
+            JCheckBoxMenuItem jCheckBoxMenuItem = new JCheckBoxMenuItem("Enable OpenGL");
+            if (opengl.exists()) {
+                jCheckBoxMenuItem.setSelected(true);
+            }
+            jCheckBoxMenuItem.addItemListener(e -> {
+                int state = e.getStateChange();
+                if (ItemEvent.SELECTED == state) {
+                    if (!opengl.exists()) {
+                        try {
+                            if (opengl.createNewFile()) {
+                                JOptionPane.showMessageDialog(null, "Restart to take effect!");
+                            }
+                        } catch (IOException e1) {
+                            e1.printStackTrace();
+                        }
+                    }
+                } else {
+                    if (opengl.exists()) {
+                        if (opengl.delete()) {
+                            JOptionPane.showMessageDialog(null, "Restart to take effect!");
+                        }
+                    }
+                }
+            });
+            jMenu.add(jCheckBoxMenuItem);
+            jMenuBar.add(jMenu);
+        }
         main.setJMenuBar(jMenuBar);
         main.add(drawTable);
 

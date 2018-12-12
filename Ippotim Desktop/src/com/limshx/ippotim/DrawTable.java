@@ -42,7 +42,12 @@ class DrawTable extends JPanel implements GraphicsOperations {
                 s = null;
                 break;
         }
-        if (null != s) {
+        if (null == s) {
+            return;
+        }
+        // 去掉首尾空格符，这样就不可能调用到Ippotim语言里的main函数了。
+        s = s.trim();
+        if (!s.isEmpty()) {
             switch (type) {
                 case "Function":
                     adapter.createFunction(s);
@@ -204,6 +209,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
     }
 
     private boolean isScreenChanged = false;
+
     protected void paintComponent(Graphics g) {
         // super.paintComponent(g);也行，但还是这个好
         g.clearRect(getX(), getY(), getWidth(), getHeight());

@@ -30,11 +30,10 @@ public class Adapter {
     private int selectedTreeNodeIndex;
     static GraphicsOperations graphicsOperations; // 本来是static GraphicsOperations drawTable = new DrawTable();之实际用不到所有的DrawTable的方法与属性，通过接口或抽象类可以完美解耦合，这就是函数指针、接口、抽象类之类的真正奥义
     private Executor executor;
-
-    static HashMap<String, List> structures = new HashMap<>();
-    static HashMap<String, String> functionNameToParameters = new HashMap<>();
-    static HashMap<String, List> functions = new HashMap<>();
     // 哈希表是建立映射的一种数据结构，可以用来给元素添加属性，而不需要新建一个类
+    static HashMap<String, List> structures = new HashMap<>();
+    static HashMap<String, List> functions = new HashMap<>();
+    static HashMap<String, HashMap<String, Instance>> functionNameToInstances = new HashMap<>();
 
     // 0是结构定义用色，1是main函数用色，2是函数定义用色
     private Color[] colors = {new Color(Color.RED, Color.YELLOW), new Color(Color.WHITE, Color.BLACK), new Color(Color.YELLOW, Color.RED)};
@@ -81,8 +80,8 @@ public class Adapter {
         List.lists.clear();
         structures.clear();
         structures.put("void", null);
-        functionNameToParameters.clear();
         functions.clear();
+        functionNameToInstances.clear();
         selectedTreeNodeIndex = -1;
         selectedList = null;
         if (addDefaultMainFunction) {
@@ -94,12 +93,23 @@ public class Adapter {
         clear(true);
     }
 
+    private void updateElements(List list) {
+        // 从1开始才是语句
+        for (int i = 1; i < list.treeNodes.size(); i++) {
+            TreeNode t = list.treeNodes.get(i);
+            t.updateElements();
+            if (null != t.list) {
+                updateElements(t.list);
+            }
+        }
+    }
+
     private void updateElements() {
         for (List list : List.lists) {
-            // 从1开始才是语句
-            for (int i = 1; i < list.treeNodes.size(); i++) {
-                list.treeNodes.get(i).updateElements();
-            }
+            // 调用层级恢复为-1，子句的调用层级永远是默认的-1之不用处理。
+            // 现发现即便运行过程中终止运行，level也会正常恢复。
+//            list.level = -1;
+            updateElements(list);
         }
     }
 
@@ -107,7 +117,8 @@ public class Adapter {
         updateElements();
         try {
             executor = new Executor();
-            executor.run(functions.get(""));
+            List main = functions.get("");
+            executor.run(null, main, null);
             // debug就是研究非预期行为的成因，看代码推敲是不够的，还需要有显示中间数据的手段
         } catch (Exception e) {
             graphicsOperations.showMessage(e.toString());
@@ -143,9 +154,6 @@ public class Adapter {
         for (int i = 2; i < node.getChildNodes().getLength(); i++) { // 从2开始是因为0和1已经用来给x和y赋值了
             list.treeNodes.add(importTreeNode(node.getChildNodes().item(i), list));
         }
-        if (null != preList) {
-            moveToTail(preList);
-        }
         return list;
     }
 
@@ -176,35 +184,34 @@ public class Adapter {
         }
     }
 
-    private String getListHead(List list) {
-        return list.treeNodes.get(0).rectangle.getContent();
-    }
-
     private void focusList(List list) {
         selectedList = list;
         selectedTreeNodeIndex = 0;
     }
 
     private void registerStructure(List list) {
-        structures.put(getListHead(list), list);
+        // 因为注册函数时要初始化变量表，所以结构定义的list要先更新一下元素。
+        updateElements(list);
+        structures.put(Executor.getListHead(list), list);
         focusList(list);
     }
 
     private void unregisterStructure(List list) {
-        structures.remove(getListHead(list));
+        structures.remove(Executor.getListHead(list));
     }
 
     private void registerFunction(List list) {
-        String[] strings = getListHead(list).split(" ", 3);
+        String[] strings = Executor.getListHead(list).split(" ", 3);
         functions.put(strings[0], list);
-        functionNameToParameters.put(strings[0], 3 == strings.length ? strings[2] : "");
+        String parameters = 3 == strings.length ? strings[2] : "";
+        functionNameToInstances.put(strings[0], Executor.getFunctionInstances(parameters));
         focusList(list);
     }
 
     private void unregisterFunction(List list) {
-        String[] strings = getListHead(list).split(" ", 3);
+        String[] strings = Executor.getListHead(list).split(" ", 3);
         functions.remove(strings[0]);
-        functionNameToParameters.remove(strings[0]);
+        functionNameToInstances.remove(strings[0]);
     }
 
     // listType: 0是结构定义，1是函数定义
@@ -303,9 +310,14 @@ public class Adapter {
         }
     }
 
+    private boolean hasUsed(String name) {
+        // 一般自定义函数比自定义结构多，先判断函数的会快些。
+        return null != functions.get(name) || null != structures.get(name);
+    }
+
     public void createFunction(String s) {
-        if (s.equals("")) {
-            graphicsOperations.showMessage("Function name cannot be empty!");
+        if (hasUsed(s.split(" ", 3)[0])) {
+            graphicsOperations.showMessage("The name is in use!");
             return;
         }
         List.currentGroupColor = colors[2];
@@ -318,8 +330,9 @@ public class Adapter {
     }
 
     public void createStructure(String s) {
-        if (s.equals("")) {
-            graphicsOperations.showMessage("Structure name cannot be empty!");
+        s = s.split(" ", 2)[0];
+        if (hasUsed(s)) {
+            graphicsOperations.showMessage("The name is in use!");
             return;
         }
         List.currentGroupColor = colors[0];
@@ -404,22 +417,7 @@ public class Adapter {
                 return;
             }
         }
-        // 将这个判断从下一个判断中提取出来是较好的选择，否则下一个判断是if (selectedRectangle == null || selectedRectangle.content.startsWith("else ") || s.equals(""))，大括号里面还要再进行一次if (s.equals(""))判断，这就有了重复代码，不优雅
-        if (s.equals("")) {
-            selectedTreeNodeIndex = -1;
-            return;
-        }
-
         insert(createMember(s), false);
-    }
-
-    private void unregisterTreeNode(TreeNode treeNode) {
-        if (treeNode.list != null) {
-            for (TreeNode t : treeNode.list.treeNodes) {
-                unregisterTreeNode(t);
-            }
-            List.unregisterList(treeNode.list);
-        }
     }
 
     // 选中矩形后菜单项选删除，先删除选中的矩形所属TreeNode及其子TreeNode之包括从矩形链表中删除TreeNode对应的矩形，然后把该组TreeNode后面的TreeNode的矩形的y值减去一个矩形高
@@ -436,8 +434,8 @@ public class Adapter {
             }
             // 要么是结构定义要么是函数定义，删不掉的是main函数和子句，在上一个判断中已经返回了
             List.unregisterList(selectedList);
+            selectedList = null;
         } else {
-            unregisterTreeNode(t);
             selectedList.treeNodes.remove(t);
         }
         selectedTreeNodeIndex = -1;
@@ -454,9 +452,9 @@ public class Adapter {
     // 选中矩形后长按即弹出输入窗口让更新内容，如果是改了像if、else、while这样有子句者则删除子句，或者为了防止误触还是设置一个modify菜单项。本来是可以直接改的，不过改变等价于删除加添加，只是这样删除第一个矩形的时候就难了，可以在TreeNode链表再添加一个不关联矩形的头结点，只是第一个矩形其实没有删除的必要
     public void modify(String s) {
         TreeNode t = selectedList.treeNodes.get(selectedTreeNodeIndex);
-        // 不允许修改main函数和子句的头结点，不允许修改或修改为else语句或“”
-        if (t.rectangle.getContent().equals("else") || t.rectangle.getContent().equals("") || s.equals("else") || s.equals("")) {
-            graphicsOperations.showMessage("Cannot modify or change to an else or empty statement!");
+        // 不允许修改main函数和子句的头结点，不允许修改为else语句
+        if (t.rectangle.getContent().equals("") || s.equals("else")) {
+            graphicsOperations.showMessage("Cannot modify or change to such a statement!");
             selectedTreeNodeIndex = -1;
             return;
         }
@@ -482,7 +480,7 @@ public class Adapter {
         hasSubTreeNodes[0] = s.startsWith("if ") || s.startsWith("while ");
         // 这时候t就是selectedTreeNode
         String content = t.rectangle.getContent();
-        hasSubTreeNodes[1] = content.startsWith("if ") || content.startsWith("while ");
+        hasSubTreeNodes[1] = content.startsWith("if ") || content.equals("else") || content.startsWith("while ");
         // 都没有子句或都有子句则直接返回，这是最简单的处理，不要想得太复杂
         // 之前是放在上面的if前面，这样tempRectangle.content就被覆盖了，导致普通指令修改为分支语句后会在doRepaint()时空指针
 //                t.rectangle.content = s;
@@ -490,9 +488,11 @@ public class Adapter {
         if (hasSubTreeNodes[0] == hasSubTreeNodes[1]) {
             return;
         }
-        remove();
-        selectedTreeNodeIndex -= 1;
         insert(s);
+        selectedTreeNodeIndex -= 1;
+        int index = selectedTreeNodeIndex;
+        remove();
+        selectedTreeNodeIndex = index;
     }
 
     private TreeNode copiedTreeNode;
@@ -528,28 +528,35 @@ public class Adapter {
         }
     }
 
-    public void click(int x, int y) {
-        setXY(x, y);
-        // 从后往前遍历
-        ListIterator<List> iterator = List.lists.listIterator(List.lists.size());
-        while (iterator.hasPrevious()) {
-            List list = iterator.previous();
-            int baseX = list.x;
-            int baseY = list.y;
-            // 判断点击点的y是否在该组的范围内，略微加速查找。由于矩形的长度是由其内文字决定的，遍历开销似乎也能接受，日后有更好的方案再优化。
-            if (!(baseY <= y && y <= baseY + (list.treeNodes.size() + 1) * Rectangle.height)) {
-                continue;
+    private boolean click(List list) {
+        boolean searchCurrentList = true;
+        int baseX = list.x;
+        int baseY = list.y;
+        // 判断点击点的y是否在该组的范围内，略微加速查找。由于矩形的长度是由其内文字决定的，遍历开销似乎也能接受，日后有更好的方案再优化。
+        if (!(baseY <= y && y <= baseY + (list.treeNodes.size() + 1) * Rectangle.height)) {
+            searchCurrentList = false;
+        }
+        if (list.equals(selectedList)) {
+            if (baseX <= x && x <= baseX + Rectangle.width && baseY + list.treeNodes.size() * Rectangle.height <= y && y <= baseY + (list.treeNodes.size() + 1) * Rectangle.height) {
+                selectedList = list;
+                selectedTreeNodeIndex = list.treeNodes.size() - 1;
+                graphicsOperations.create("Member");
+                return true;
             }
-            if (list.equals(selectedList)) {
-                if (baseX <= x && x <= baseX + Rectangle.width && baseY + list.treeNodes.size() * Rectangle.height <= y && y <= baseY + (list.treeNodes.size() + 1) * Rectangle.height) {
-                    selectedList = list;
-                    selectedTreeNodeIndex = list.treeNodes.size() - 1;
-                    graphicsOperations.create("Member");
-                    return;
+        }
+        for (int i = list.treeNodes.size() - 1; i >= 0; i--) {
+            TreeNode t = list.treeNodes.get(i);
+            // 要先从子句找，不然当子句移动到父句上，选中的都会是父句
+            if (null != t.list) {
+                if (click(t.list)) {
+                    return true;
                 }
             }
+        }
+        if (searchCurrentList) {
             for (int i = 0; i < list.treeNodes.size(); i++) {
-                int width = list.treeNodes.get(i).rectangle.pixelWidth;
+                TreeNode t = list.treeNodes.get(i);
+                int width = t.rectangle.pixelWidth;
                 if (baseX <= x && x <= baseX + width && baseY <= y && y <= baseY + Rectangle.height) {
                     // 不能selectedList.equals(list)，因为selectedList可以为null。
                     if (null != selectedList && !getSourceList(list).equals(getSourceList(selectedList))) {
@@ -557,9 +564,22 @@ public class Adapter {
                     }
                     selectedList = list;
                     selectedTreeNodeIndex = i;
-                    return;
+                    return true;
                 }
                 baseY += Rectangle.height;
+            }
+        }
+        return false;
+    }
+
+    public void click(int x, int y) {
+        setXY(x, y);
+        // 从后往前遍历
+        ListIterator<List> iterator = List.lists.listIterator(List.lists.size());
+        while (iterator.hasPrevious()) {
+            List list = iterator.previous();
+            if (click(list)) {
+                return;
             }
         }
         selectedList = null;
@@ -569,15 +589,9 @@ public class Adapter {
     private void moveList(List list, int x, int y) {
         list.x += x;
         list.y += y;
-    }
-
-    private void moveList(List list, int x, int y, boolean moveSubTreeNodes) {
-        moveList(list, x, y);
-        if (moveSubTreeNodes) {
-            for (TreeNode treeNode : list.treeNodes) {
-                if (null != treeNode.list) {
-                    moveList(treeNode.list, x, y, true);
-                }
+        for (TreeNode treeNode : list.treeNodes) {
+            if (null != treeNode.list) {
+                moveList(treeNode.list, x, y);
             }
         }
     }
@@ -585,11 +599,11 @@ public class Adapter {
     public void drag(int x, int y) {
         if (null == selectedList) {
             for (List list : List.lists) {
-                moveList(list, x - this.x, y - this.y, false);
+                moveList(list, x - this.x, y - this.y);
             }
         } else {
             List list = selectedList;
-            moveList(list, x - this.x, y - this.y, true);
+            moveList(list, x - this.x, y - this.y);
         }
         setXY(x, y);
     }
@@ -597,14 +611,8 @@ public class Adapter {
     private void sort(List list, int targetX, int targetY) {
         int x = targetX - list.x;
         int y = targetY - list.y;
-        moveList(list, x, y, false);
-        y = list.y;
-        for (TreeNode t : list.treeNodes) {
-            if (null != t.list) {
-                sort(t.list, list.x + Rectangle.width, y);
-            }
-            y += Rectangle.height;
-        }
+        moveList(list, x, y);
+        moveToTail(list);
     }
 
     private int getMaxXofList(List list) {
@@ -658,17 +666,24 @@ public class Adapter {
         sort(functions, capacity);
     }
 
+    private void doWheelRotation(List list, int x, int y, double s) {
+        list.x = (int) (x + (list.x - x) / s);
+        list.y = (int) (y + (list.y - y) / s);
+        for (TreeNode t : list.treeNodes) {
+            t.rectangle.setContent(t.rectangle.getContent());
+            if (null != t.list) {
+                doWheelRotation(t.list, x, y, s);
+            }
+        }
+    }
+
     public void doWheelRotation(int x, int y, double s) {
         if (Rectangle.scale / s < 0.4 || Rectangle.scale / s > 2.5) { // 缩放倍率不超过基准倍率2.5倍
             return;
         }
         setScale(Rectangle.scale / s);
         for (List list : List.lists) {
-            list.x = (int) (x + (list.x - x) / s);
-            list.y = (int) (y + (list.y - y) / s);
-            for (TreeNode t : list.treeNodes) {
-                t.rectangle.setContent(t.rectangle.getContent());
-            }
+            doWheelRotation(list, x, y, s);
         }
     }
 
@@ -698,7 +713,7 @@ public class Adapter {
                 targetList = focusedTreeNode.matchedFunction;
                 rectangle = focusedTreeNode.matchedFunction.treeNodes.get(0).rectangle;
                 if (!getSourceList(selectedList).equals(getSourceList(targetList))) {
-                    drawList(targetList, true);
+                    drawList(targetList);
                 }
                 rectangle.draw(targetList.x, targetList.y, false, targetList.color.stringColor, targetList.color.rectangleColor);
             }
@@ -709,7 +724,7 @@ public class Adapter {
                 targetList = structure;
                 rectangle = structure.treeNodes.get(0).rectangle;
                 if (!getSourceList(selectedList).equals(getSourceList(targetList))) {
-                    drawList(targetList, true);
+                    drawList(targetList);
                 }
                 rectangle.draw(targetList.x, targetList.y, false, targetList.color.stringColor, targetList.color.rectangleColor);
             }
@@ -720,9 +735,13 @@ public class Adapter {
         }
     }
 
+    private void drawList(List list) {
+        drawList(list, null);
+    }
+
     private Integer focusedX, focusedY;
-    private LinkedList<Arrow> arrows = new LinkedList<>();
-    private void drawList(List list, boolean drawSubLists) {
+    private void drawList(List list, Arrow preArrow) {
+        LinkedList<Arrow> arrows = new LinkedList<>();
         int baseX = list.x;
         // 先减去Rectangle.height是为了baseY += Rectangle.height;这句能放到最前面，放最前面是说必须执行到。
         int baseY = list.y - Rectangle.height;
@@ -743,28 +762,22 @@ public class Adapter {
                     treeNode.list.x = baseX + Rectangle.width;
                     treeNode.list.y = baseY;
                 }
-                if (drawSubLists) {
-                    drawList(treeNode.list, true);
-                }
-                arrows.add(new Arrow(baseX, baseY, treeNode.list.x, treeNode.list.y));
+                arrows.add(new Arrow(baseX, baseY, treeNode.list));
             }
             if (hasSelectedTreeNode() && treeNode.equals(selectedList.treeNodes.get(selectedTreeNodeIndex))) {
                 focusedX = baseX;
                 focusedY = baseY;
             }
         }
-        if (drawSubLists) {
-            moveToTail(list);
-        }
         // selectedList可以为空，两个都可以为空则用Objects.equals()
         if (list.equals(selectedList)) {
             Rectangle.tail.draw(baseX, baseY + Rectangle.height, true, list.color.rectangleColor, list.color.stringColor);
         }
-        if (!arrows.isEmpty()) {
-            for (Arrow arrow : arrows) {
-                arrow.draw();
-            }
-            arrows.clear();
+        if (null != preArrow) {
+            preArrow.draw();
+        }
+        for (Arrow arrow : arrows) {
+            drawList(arrow.list, arrow);
         }
     }
 
@@ -780,12 +793,16 @@ public class Adapter {
         if (null == selectedList) {
             for (List list : List.lists) {
                 if (list.x < width && list.y < height) {
-                    drawList(list, false);
+                    drawList(list);
                 }
             }
         } else {
-            drawList(getSourceList(selectedList), true);
+            List list = getSourceList(selectedList);
+            moveToTail(list);
+            drawList(list);
         }
+        // 这里判focusedX是因为虽然选中了矩形，但该矩形不在屏幕内，这种情况只有在桌面端才存在或者说会出现之鼠标可以拖动到窗口外。
+        // 不能轻而易举理解的判空等操作要注释，不然后续会以为是冗余代码又难以证明。
         if (hasSelectedTreeNode() && null != focusedX) {
             drawFocusedTreeNode(focusedX, focusedY);
             focusedX = null;

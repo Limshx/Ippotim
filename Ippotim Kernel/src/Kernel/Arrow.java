@@ -2,13 +2,12 @@ package Kernel;
 
 class Arrow {
     private int xFrom, yFrom;
-    private int xTo, yTo;
+    List list;
 
-    Arrow(int x1, int y1, int x2, int y2) {
-        xFrom = x1 + Rectangle.width / 2;
-        yFrom = y1 + Rectangle.height / 2;
-        xTo = x2 + Rectangle.width / 2;
-        yTo = y2 + Rectangle.height / 2;
+    Arrow(int x, int y, List list) {
+        xFrom = x + Rectangle.width / 2;
+        yFrom = y + Rectangle.height / 2;
+        this.list = list;
     }
 
     private int distance(int x1, int y1, int x2, int y2) {
@@ -16,6 +15,9 @@ class Arrow {
     }
 
     void draw() {
+        int xTo, yTo;
+        xTo = list.x + Rectangle.width / 2;
+        yTo = list.y + Rectangle.height / 2;
         Adapter.graphicsOperations.drawLine(xFrom, yFrom, xTo, yTo);
         int xa, ya, xb, yb;
         int distance = Math.abs(distance(xFrom, yFrom, xTo, yTo));

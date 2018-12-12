@@ -186,22 +186,26 @@ public class DrawTable extends View implements GraphicsOperations {
             @Override
             void onPositive() {
                 String input = ((EditText) getView()).getText().toString();
-                switch (type) {
-                    case "Function":
-                        adapter.createFunction(input);
-                        break;
-                    case "Structure":
-                        adapter.createStructure(input);
-                        break;
-                    case "Member":
-                        adapter.insert(input);
-                        break;
-                    case "Modify":
-                        adapter.modify(input);
-                    default:
-                        break;
+                // 去掉首尾空格符，这样就不可能调用到Ippotim语言里的main函数了。
+                input = input.trim();
+                if (!input.isEmpty()) {
+                    switch (type) {
+                        case "Function":
+                            adapter.createFunction(input);
+                            break;
+                        case "Structure":
+                            adapter.createStructure(input);
+                            break;
+                        case "Member":
+                            adapter.insert(input);
+                            break;
+                        case "Modify":
+                            adapter.modify(input);
+                        default:
+                            break;
+                    }
+                    doRepaint();
                 }
-                doRepaint();
             }
         };
         infoBox.showDialog();
