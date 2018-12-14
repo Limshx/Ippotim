@@ -165,14 +165,14 @@ public class DrawTable extends View implements GraphicsOperations {
         String title;
         switch (type) {
             case "Function":
-                title = "Input a function name :";
+                title = "Input a function head :";
                 break;
             case "Structure":
                 title = "Input a structure name :";
                 break;
             case "Member": // 一起判断
             case "Modify":
-                title = "Input a sentence :";
+                title = "Input a statement :";
                 break;
             default:
                 title = null;

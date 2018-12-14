@@ -27,16 +27,16 @@ class DrawTable extends JPanel implements GraphicsOperations {
         String s;
         switch (type) {
             case "Function":
-                s = JOptionPane.showInputDialog("Input a function name :");
+                s = JOptionPane.showInputDialog("Input a function head :");
                 break;
             case "Structure":
                 s = JOptionPane.showInputDialog("Input a structure name :");
                 break;
             case "Member":
-                s = JOptionPane.showInputDialog("Input a sentence :");
+                s = JOptionPane.showInputDialog("Input a statement :");
                 break;
             case "Modify":
-                s = JOptionPane.showInputDialog("Input a sentence :", adapter.getRectangleContent());
+                s = JOptionPane.showInputDialog("Input a statement :", adapter.getRectangleContent());
                 break;
             default:
                 s = null;
@@ -208,7 +208,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
         });
     }
 
-    private boolean isScreenChanged = false;
+    private boolean isScreenChanged;
 
     protected void paintComponent(Graphics g) {
         // super.paintComponent(g);也行，但还是这个好

@@ -79,6 +79,7 @@ class Main extends JFrame {
         jMenuItems[0] = new JMenuItem("Import");
         jMenuItems[0].addActionListener(actionEvent -> {
             JFileChooser jFileChooser = new JFileChooser(homeDirectory);
+            jFileChooser.setSelectedFile(openedFile);
             int result = jFileChooser.showOpenDialog(null);
             if (JOptionPane.YES_OPTION != result) {
                 return;

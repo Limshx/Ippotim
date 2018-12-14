@@ -7,7 +7,10 @@ import java.util.HashMap;
 class Instance {
     String type;
     Object name;
-    ArrayList<Instance> elements;
+
+    // 延迟或者说lazy加载或者说初始化方案中必需的标志位，挺不错的抽象
+    private boolean automaticallyInitElements;
+    private ArrayList<Instance> elements;
 
     // 对数组的实现是在此设立一个数组用以存放数组的各下标上限，使用具体的数组元素时先看数组名是否在变量表中，在的话再看各下标是否大于0且小于其上限，符合要求了再看类似a[1][2]之具体数组元素是否在arrayElements变量表里，不在就加进去再用，在就直接用
     private HashMap<String, Instance> arrayElements;
@@ -34,19 +37,32 @@ class Instance {
             this.elements.add(new Instance());
         } else {
             if (initElements) {
-                // 本来是结构体系定义有元素的则初始化elements，不过基本数据类型的值设计为其元素了，所以一起初始化
-                this.elements = new ArrayList<>();
-                List elements = Adapter.structures.get(type);
-                if (null != elements) {
-                    // 从1开始才是语句
-                    for (int i = 1; i < elements.treeNodes.size(); i++) {
-                        // 如果结构体元素中有基本数据类型元素，则初始化
-                        TreeNode t = elements.treeNodes.get(i);
-                        this.elements.add(new Instance(t.elements.get(0), t.elements.get(1), false));
-                    }
+                automaticallyInitElements = true;
+            }
+        }
+    }
+
+    // 这样就是按需获取或者说分配了，就是说像广义数组哈希表arrayElements不用定义数组也能直接使用任意维度的数组变量那样，比如结构体S中定义有S类型的成员next，则S的实例比如说s可以类似s.next.next...之无限取成员而不会报空指针。
+    ArrayList<Instance> getElements() {
+        if (null == elements && automaticallyInitElements) {
+            // 本来是结构体系定义有元素的则初始化elements，不过基本数据类型的值设计为其元素了，所以一起初始化
+            this.elements = new ArrayList<>();
+            List elements = Adapter.structures.get(type);
+            if (null != elements) {
+                // 从1开始才是语句
+                for (int i = 1; i < elements.treeNodes.size(); i++) {
+                    // 如果结构体元素中有基本数据类型元素，则初始化
+                    TreeNode t = elements.treeNodes.get(i);
+                    this.elements.add(new Instance(t.elements.get(0), t.elements.get(1), false));
                 }
             }
         }
+        return elements;
+    }
+
+    void setElements(ArrayList<Instance> elements) {
+        automaticallyInitElements = null != elements;
+        this.elements = elements;
     }
 
     HashMap<String, Instance> getArrayElements() {
