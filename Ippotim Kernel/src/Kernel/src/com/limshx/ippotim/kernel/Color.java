@@ -1,4 +1,4 @@
-package Kernel;
+package com.limshx.ippotim.kernel;
 
 class Color {
     static final int BLACK = 0xff000000;

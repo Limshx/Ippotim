@@ -1,21 +1,29 @@
 package com.limshx.ippotim;
 
-import Kernel.Adapter;
-import Kernel.GraphicsOperations;
+import com.limshx.ippotim.kernel.Adapter;
+import com.limshx.ippotim.kernel.GraphicsOperations;
 
+import javax.swing.AbstractAction;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import java.awt.Color;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.io.File;
 
 class DrawTable extends JPanel implements GraphicsOperations {
     Adapter adapter;
@@ -73,7 +81,8 @@ class DrawTable extends JPanel implements GraphicsOperations {
         JOptionPane.showMessageDialog(null, s);
     }
 
-    void doRepaint() {
+    @Override
+    public void doRepaint() {
         repaint();
     }
 
@@ -146,9 +155,63 @@ class DrawTable extends JPanel implements GraphicsOperations {
         return g.getFontMetrics().stringWidth(s);
     }
 
+    private boolean inputted;
+    private Object input;
+
+    private void waitForInput() {
+        while (!inputted) {
+            try {
+                Thread.sleep(0);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        inputted = false;
+    }
+
     @Override
-    public String getInput(String name) {
-        return JOptionPane.showInputDialog("Input for \"" + name + "\" :");
+    public Object getInput() {
+        JFrame jFrame = new JFrame("Input");
+        JLabel jLabel = new JLabel("Input a value :");
+        JTextField jTextField = new JTextField();
+        jTextField.setColumns(20);
+        JButton[] jButtons = new JButton[2];
+        jButtons[0] = new JButton(" String ");
+        jButtons[1] = new JButton("Number");
+        jButtons[0].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                input = jTextField.getText();
+                inputted = true;
+                jFrame.setVisible(false);
+            }
+        });
+        jButtons[1].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                try {
+                    input = Integer.parseInt(jTextField.getText());
+                    inputted = true;
+                    jFrame.setVisible(false);
+                } catch (NumberFormatException e) {
+                    showMessage("Not an integer!");
+                }
+            }
+        });
+        jFrame.setLayout(new FlowLayout(FlowLayout.CENTER));
+        jFrame.add(jLabel);
+        jFrame.add(jTextField);
+        JPanel jPanel = new JPanel();
+        jPanel.add(jButtons[0]);
+        jPanel.add(jButtons[1]);
+        jFrame.add(jPanel);
+        jFrame.setSize(250, 110);
+        Main.setWindowCenter(jFrame);
+        jFrame.setAlwaysOnTop(true);
+        jFrame.setVisible(true);
+
+        waitForInput();
+        return input;
     }
 
     DrawTable() {
@@ -204,6 +267,8 @@ class DrawTable extends JPanel implements GraphicsOperations {
             @Override
             public void componentResized(ComponentEvent e) {
                 isScreenChanged = true;
+                // 这里要重绘一次，不然会无法及时为adapter更新屏幕宽高。
+                doRepaint();
             }
         });
     }
@@ -217,7 +282,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
         ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         if (null == adapter) {
-            adapter = new Adapter(this, getWidth(), getHeight(), 1);
+            adapter = new Adapter(this, getWidth(), getHeight(), 1, new File(Main.homeDirectory + "ippotim.properties"));
         }
         if (isScreenChanged) {
             isScreenChanged = false;

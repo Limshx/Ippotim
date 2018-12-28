@@ -15,13 +15,21 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
 import android.widget.EditText;
-import android.widget.Toast;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.LinkedList;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
@@ -32,17 +40,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        context = this;
 
         // API level 23以上需要申请权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && PackageManager.PERMISSION_GRANTED != checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
         } else {
             if (initDirectoryFailed()) {
-                Toast.makeText(this, "Create path failed!", Toast.LENGTH_SHORT).show();
+                drawTable.showMessage("Create path failed!");
             }
         }
 
-        context = this;
         drawTable = findViewById(R.id.paint_board);
         getWindowManager().getDefaultDisplay().getRealMetrics(drawTable.displayMetrics);
 
@@ -80,11 +88,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 0) {
+        if (0 == requestCode) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (initDirectoryFailed()) {
-                    Toast.makeText(this, "Create path failed!", Toast.LENGTH_SHORT).show();
+                    drawTable.showMessage("Create path failed!");
                 }
+            } else {
+                System.exit(0);
             }
         }
     }
@@ -109,24 +119,79 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 //        }
 //    }
 
+    private String[] demos = {"Spiral%20Triangle%20Problem"};
+
+    private void download(String fileName) {
+        try {
+            URL url = new URL("https://raw.githubusercontent.com/Limshx/Ippotim/master/Demos/" + fileName);
+            URLConnection urlConnection = url.openConnection();
+            InputStream inputStream = urlConnection.getInputStream();
+            FileOutputStream fileOutputStream = new FileOutputStream(homeDirectory + fileName.replace("%20", " "));
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                System.out.println(bytesRead);
+                fileOutputStream.write(buffer, 0, bytesRead);
+            }
+        } catch (IOException e) {
+            // new Handler().post()也会“java.lang.RuntimeException: Can't create handler inside thread that has not called Looper.prepare()”
+            drawTable.post(new Runnable() {
+                @Override
+                public void run() {
+                    drawTable.showMessage("Can not connect to the internet!");
+                }
+            });
+        }
+    }
+
+    private void downloadDemos() {
+        new InfoBox("There are no projects. Download demos?", "Cancel", "OK", null, context) {
+            @Override
+            void onNegative() {
+
+            }
+
+            @Override
+            void onPositive() {
+                drawTable.showMessage("Downloading demos...");
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (String demo : demos) {
+                            download(demo);
+                        }
+                    }
+                }).start();
+            }
+        }.showDialog();
+    }
+
     private int selectedItem;
+    private String[] items;
+
+    private boolean isSystemFile(String fileName) {
+        return fileName.equals("ippotim.properties") || fileName.equals("ippotim.output");
+    }
 
     abstract class FileOperation {
         abstract void operateFile();
 
         void selectFile() {
             File[] files = new File(homeDirectory).listFiles();
-
-            if (files.length == 0) {
-                Toast.makeText(context, "There are no projects.", Toast.LENGTH_SHORT).show();
+            LinkedList<String> list = new LinkedList<>();
+            for (File file : files) {
+                String name = file.getName();
+                if (!isSystemFile(name)) {
+                    list.add(name);
+                }
+            }
+            if (0 == list.size()) {
+                downloadDemos();
                 return;
             }
-
-            final String[] items = new String[files.length];
-            for (int i = 0; i < files.length; i++) {
-                items[i] = files[i].getName();
-            }
-            selectedItem = 0;
+            items = new String[list.size()];
+            list.toArray(items);
+            selectedItem = null == openedFile ? 0 : list.indexOf(openedFile.getName());
             InfoBox infoBox = new InfoBox(null, "Cancel", "OK", null, context) {
                 @Override
                 void onNegative() {
@@ -160,7 +225,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private File openedFile;
-    private final String homeDirectory = "/storage/emulated/0/Ippotim/";
+    static final String homeDirectory = "/storage/emulated/0/Ippotim/";
 
     private boolean initDirectoryFailed() {
         File file = new File(homeDirectory);
@@ -169,19 +234,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void importFromFile() {
         if (drawTable.adapter.getCodeFromXml(openedFile)) {
-            Toast.makeText(this, "Imported \"" + openedFile.getName() + "\"", Toast.LENGTH_SHORT).show();
+            drawTable.showMessage("Imported \"" + openedFile.getName() + "\"");
         }
     }
 
     private void exportToFile() {
         if (drawTable.adapter.setCodeToXml(openedFile)) {
-            Toast.makeText(this, "Exported \"" + openedFile.getName() + "\"", Toast.LENGTH_SHORT).show();
+            drawTable.showMessage("Exported \"" + openedFile.getName() + "\"");
         }
     }
 
     private void deleteFile() {
         if (openedFile.delete()) {
-            Toast.makeText(context, "Deleted \"" + openedFile.getName() + "\"", Toast.LENGTH_SHORT).show();
+            drawTable.showMessage("Deleted \"" + openedFile.getName() + "\"");
         }
     }
 
@@ -216,6 +281,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     void onPositive() {
                         String fileName = ((EditText) getView()).getText().toString();
                         if (!fileName.equals("")) {
+                            if (isSystemFile(fileName)) {
+                                drawTable.showMessage("Can not export to a system file!");
+                                return;
+                            }
                             openedFile = new File(homeDirectory + fileName);
                             if (openedFile.exists()) {
                                 new InfoBox("File \"" + openedFile.getName() + "\" exists, overwrite it?", "Cancel", "OK", null, context) {
@@ -233,7 +302,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                 exportToFile();
                             }
                         } else {
-                            Toast.makeText(context, "The name of file can not be empty!", Toast.LENGTH_SHORT).show();
+                            drawTable.showMessage("The name of file can not be empty!");
                         }
                     }
                 };
@@ -271,8 +340,68 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         }
                     }.showDialog();
                 } else {
-                    Toast.makeText(context, "Please import a project first!", Toast.LENGTH_SHORT).show();
+                    drawTable.showMessage("Please import a project first!");
                 }
+                break;
+            case R.id.Settings:
+                LinearLayout layout = new LinearLayout(context);
+                layout.setOrientation(LinearLayout.VERTICAL);
+                String[] defaultKeywords = drawTable.adapter.getDefaultKeywords();
+                final String[] currentKeywords = drawTable.adapter.getCurrentKeywords();
+                final EditText[] editTexts = new EditText[currentKeywords.length];
+                for (int i = 0; i < currentKeywords.length; i++) {
+                    LinearLayout linearLayout = new LinearLayout(context);
+                    linearLayout.setOrientation(LinearLayout.HORIZONTAL);
+                    linearLayout.setGravity(Gravity.CENTER);
+                    TextView textView = new TextView(context);
+                    String text = defaultKeywords[i] + " -> ";
+                    textView.setText(text);
+                    linearLayout.addView(textView);
+                    editTexts[i] = new EditText(context);
+                    editTexts[i].setText(currentKeywords[i]);
+                    linearLayout.addView(editTexts[i]);
+                    layout.addView(linearLayout);
+                }
+//                LayoutInflater layoutInflater = LayoutInflater.from(this);
+//                LinearLayout linearLayout = findViewById(R.id.keywords);
+//                View view = layoutInflater.inflate(R.layout.keywords, linearLayout);
+                // 原来Layout可以直接当View用
+                new InfoBox(null, "Cancel", "OK", layout, context) {
+                    @Override
+                    void onNegative() {
+
+                    }
+
+                    @Override
+                    void onPositive() {
+                        LinkedList<String> linkedList = new LinkedList<>();
+                        for (int i = 0; i < currentKeywords.length; i++) {
+                            String keyword = editTexts[i].getText().toString().replace(" ", "");
+                            if (!linkedList.contains(keyword)) {
+                                linkedList.add(keyword);
+                            }
+                            currentKeywords[i] = keyword;
+                        }
+                        if (currentKeywords.length == linkedList.size()) {
+                            getAlertDialog().cancel();
+                            new InfoBox("Make the keywords default?", "Cancel", "OK", null, context) {
+                                @Override
+                                void onNegative() {
+                                    drawTable.adapter.setCurrentKeywords(currentKeywords, false);
+                                }
+
+                                @Override
+                                void onPositive() {
+                                    drawTable.adapter.setCurrentKeywords(currentKeywords, true);
+                                }
+                            }.showDialog();
+                        } else {
+                            drawTable.showMessage("A keyword must be different from the others!");
+                        }
+                    }
+                }.showDialog(true, false);
+                break;
+            default:
                 break;
         }
 
@@ -304,7 +433,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     @Override
                     void onNegative() {
                         if (terminal.running) {
-                            Toast.makeText(context, "Please wait for the program to finish.", Toast.LENGTH_SHORT).show();
+                            drawTable.showMessage("Please wait for the program to finish.");
                             return;
                         }
 
@@ -320,7 +449,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                     terminal.jumpToPage(Integer.parseInt(((EditText) getView()).getText().toString()));
                                     getAlertDialog().cancel();
                                 } catch (NumberFormatException e) {
-                                    Toast.makeText(context, "Not an integer!", Toast.LENGTH_SHORT).show();
+                                    drawTable.showMessage("Not an integer!");
                                 }
                             }
                         };
@@ -339,7 +468,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 if (drawTable.adapter.hasSelectedTreeNode()) {
                     drawTable.create("Member");
                 } else {
-                    Toast.makeText(context, "Please select a rectangle first!", Toast.LENGTH_SHORT).show();
+                    drawTable.showMessage("Please select a rectangle first!");
                 }
                 return true;
             }
@@ -352,7 +481,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 if (drawTable.adapter.hasSelectedTreeNode()) {
                     drawTable.create("Modify");
                 } else {
-                    Toast.makeText(context, "Please select a rectangle first!", Toast.LENGTH_SHORT).show();
+                    drawTable.showMessage("Please select a rectangle first!");
                 }
                 return true;
             }
@@ -365,7 +494,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 if (drawTable.adapter.hasSelectedTreeNode()) {
                     drawTable.adapter.copy();
                 } else {
-                    Toast.makeText(context, "Please select a rectangle first!", Toast.LENGTH_SHORT).show();
+                    drawTable.showMessage("Please select a rectangle first!");
                 }
                 return true;
             }
@@ -379,7 +508,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     drawTable.adapter.paste();
                     drawTable.doRepaint();
                 } else {
-                    Toast.makeText(context, "Please select a rectangle first!", Toast.LENGTH_SHORT).show();
+                    drawTable.showMessage("Please select a rectangle first!");
                 }
                 return true;
             }
@@ -393,7 +522,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     drawTable.adapter.remove();
                     drawTable.doRepaint();
                 } else {
-                    Toast.makeText(context, "Please select a rectangle first!", Toast.LENGTH_SHORT).show();
+                    drawTable.showMessage("Please select a rectangle first!");
                 }
                 return true;
             }
@@ -417,7 +546,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             drawTable.adapter.sort(capacity);
                             drawTable.doRepaint();
                         } catch (NumberFormatException e) {
-                            Toast.makeText(context, "Not an integer!", Toast.LENGTH_SHORT).show();
+                            drawTable.showMessage("Not an integer!");
                         }
                     }
                 };

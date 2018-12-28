@@ -1,14 +1,14 @@
-package Kernel;
+package com.limshx.ippotim.kernel;
 
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Objects;
 
 class Executor {
-    boolean stop;
-    // 0是正常，1是break，2是continue。
-    private int loopCtrl;
+    static boolean stop;
+    // 0是正常，1是break，2是continue，3是return。
+    private int statementsCtrl;
 
     private Instance getArrayInstance(HashMap<String, Instance> instances, Instance instance, String arrayPart) {
         if (!arrayPart.equals("")) {
@@ -24,7 +24,7 @@ class Executor {
 //            }
             Instance instanceTemp = instance.getArrayElements().get(nameOfArrayInstance);
             if (null == instanceTemp) {
-                Instance newInstance = new Instance(instance.type, nameOfArrayInstance);
+                Instance newInstance = new Instance(instance.type);
                 instance.getArrayElements().put(nameOfArrayInstance, newInstance);
                 instanceTemp = newInstance;
             }
@@ -97,12 +97,10 @@ class Executor {
 
     private Instance getInstance(HashMap<String, Instance> instances, Instance fatherInstance, String instanceName) {
         if (null != fatherInstance) {
-            for (Instance element : fatherInstance.getElements()) {
-                if (null != element.name) {
-                    if (element.name.equals(instanceName)) {
-                        return element;
-                    }
-                }
+            if (null != fatherInstance.getElements()) {
+                return fatherInstance.getElements().get(instanceName);
+            } else {
+                Adapter.error("NullPointerException");
             }
             return null;
         } else {
@@ -121,8 +119,7 @@ class Executor {
             elementInstance = getInstance(instances, instance, elementName[0]);
         }
         // 在getArrayInstance()前判空就不用在getArrayInstance()里面判了，getArrayInstance()肯定不会返回空，这也是一种优化，如何优化是一门学问。
-        // 对elementInstance.type判空是说常量不能作为变量使用，之现在的设计是常量保存在type为空的变量中。
-        if (null == elementInstance || null == elementInstance.type) {
+        if (null == elementInstance) {
             return null;
         }
         return getArrayInstance(instances, elementInstance, elementName[2]);
@@ -142,6 +139,7 @@ class Executor {
         for (String elementChain : elementChains) {
             instance = getElementInstance(instances, instance, elementChain);
             if (null == instance) {
+                Adapter.error("No such instance!");
                 return null;
             }
         }
@@ -151,41 +149,31 @@ class Executor {
     void run(HashMap<String, Instance> instances, List list) {
         // 从1开始才是语句
         for (int index = 1; index < list.treeNodes.size(); index++) {
-            if (stop || 0 != loopCtrl) {
+            if (stop || 0 != statementsCtrl) {
                 return;
             }
-            TreeNode command = list.treeNodes.get(index);
-//            System.out.println(command.commandType.toString() + command.elements);
-            switch (command.commandType) {
+            TreeNode statement = list.treeNodes.get(index);
+            Adapter.selectedList = list;
+            Adapter.selectedTreeNodeIndex = index;
+            switch (statement.statementType) {
                 case DEFINE: {
                     // 这样就要求变量名不能与结构名有相同的，否则会导致数组越界异常，比如S S之定义结构S的一个变量S，然后S之调用结构S的一个函数，就会误认为这个S是结构名而非变量名，从而导致下面的parameters[1]数组越界
                     // 处理类似Set set之类的变量定义，暂时设计为定义集合变量的时候即分配存储空间之Set set等价于Set set = new Set()
-                    String type = command.elements.get(0);
-                    // 从1开始是因为0是结构名
-                    for (int i = 1; i < command.elements.size(); i++) {
-                        String name = command.elements.get(i);
-                        if (!instances.containsKey(name)) {
-                            Instance instance = new Instance(type, name);
-                            instances.put(command.elements.get(i), instance);
-                        } else {
-                            Adapter.graphicsOperations.showMessage("\"" + name + "\" " + "is already defined!");
-                            stop = true;
-                        }
-                    }
+                    Instance.putInstance(instances, statement);
                     break;
                 }
                 case ASSIGN: {
-                    Instance to = getInstance(instances, command.elements.get(0));
-                    assign(instances, command.elements.get(2), to, false);
+                    Instance to = getInstance(instances, statement.elements.get(0));
+                    assign(instances, statement.elements.get(2), to, false);
                     break;
                 }
                 case INPUT: {
                     // 从1开始是因为0是“input”。
                     // input设计为赋值语句的手动模式，也即input后可接任意void变量，用户输入的可以是任意表达式和或者说包括任意变量名。
-                    for (int i = 1; i < command.elements.size(); i++) {
-                        Instance instance = getInstance(instances, command.elements.get(i));
-                        if (null != instance && "void".equals(instance.type)) {
-                            setValue(instance, getValue(instances, Adapter.graphicsOperations.getInput((String) instance.name)));
+                    for (int i = 1; i < statement.elements.size(); i++) {
+                        Instance instance = getInstance(instances, statement.elements.get(i));
+                        if (null != instance && Syntax.currentKeywords[0].equals(instance.type)) {
+                            setValue(instance, Adapter.graphicsOperations.getInput());
                         }
                     }
                     break;
@@ -194,29 +182,32 @@ class Executor {
                     // 前期先求把功能实现，越简单越好，不必强求强大精妙，过早优化是万恶之源，似己想要写操作系统也是想要一个可以扩展成足够强大的操作系统的教科书级的简易实现。
                     // output设计为只是输出常量和void变量的语句，这样似乎就与input不是一路人或者说互为相反数或者说阴阳了。
                     StringBuilder stringBuilder = new StringBuilder();
-                    if (command.elements.size() > 1) {
+                    if (statement.elements.size() > 1) {
                         // 从1开始是因为0是“output”了，像这种以及case不加break等不合常规的行为都应添加注释或者说说明
-                        for (int i = 1; i < command.elements.size(); i++) {
-                            String element = command.elements.get(i);
+                        for (int i = 1; i < statement.elements.size(); i++) {
+                            String element = statement.elements.get(i);
                             Object value = getValue(instances, element);
-                            if (null != value) {
-                                stringBuilder.append(value);
-                            }
+                            stringBuilder.append(null != value ? value : 0);
                         }
                     } else {
                         // 当output单独成句之不接任何参数，就是输出换行符，这个设计简直巧夺天工。
                         stringBuilder.append("\n");
                     }
                     Adapter.graphicsOperations.appendText(stringBuilder.toString());
+                    try {
+                        Adapter.fileOutputStream.write(stringBuilder.toString().getBytes());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     break;
                 }
                 case IF: {
                     // 不管有没有else之子句最后一句是"else :"还是"+"，都是去头去尾
-                    List listIf = command.list;
+                    List listIf = statement.list;
                     // 如果没有else，得到的就是null
-                    List listElse = command.list.treeNodes.get(command.list.treeNodes.size() - 1).list;
+                    List listElse = statement.list.treeNodes.get(statement.list.treeNodes.size() - 1).list;
                     HashMap<String, Instance> subInstances = new HashMap<>(instances);
-                    if (isTrue(instances, command.elements.get(1))) {
+                    if (isTrue(instances, statement.elements.get(1))) {
                         run(subInstances, listIf);
                     } else {
                         if (null != listElse) {
@@ -226,8 +217,8 @@ class Executor {
                     break;
                 }
                 case WHILE: {
-                    List listWhile = command.list;
-                    while (isTrue(instances, command.elements.get(1))) {
+                    List listWhile = statement.list;
+                    while (isTrue(instances, statement.elements.get(1))) {
                         // 必须每次新建，否则会报重定义错误。不报重定义错误或者说禁止重定义也不行，重定义全局变量会导致第一次运行与后续运行实际逻辑不同，这不合设计要求。之前特地设计了一个本地变量与全局变量分离的方案，也即将instances分成globalInstances和localInstances，发现全局变量应为所有父句的本地变量的并集。于是配合List的preList设计了一个看起来很优雅的链式本地变量方案，为每一个List实例添加一个本地变量表，从当前list开始到源list找变量直至找到为止，但这个方案需要处理好函数的递归调用，于是将List的本地变量表套上一个哈希表。后来发现本地变量表每次必须重建，就像现在这样，也是最初的那样，觉得与其弄着么复杂不如还是返璞归真了。
                         HashMap<String, Instance> subInstances = new HashMap<>(instances);
                         run(subInstances, listWhile);
@@ -235,16 +226,19 @@ class Executor {
                     break;
                 }
                 case BREAK: { // while语句之外也可以使用break，比如主函数中，相当于后面的直接不执行了，暂不设限制
-                    loopCtrl = 1;
+                    statementsCtrl = 1;
                     break;
                 }
                 case CONTINUE: { // 有循环似乎就得有break和continue
-                    loopCtrl = 2;
+                    statementsCtrl = 2;
                     break;
                 }
                 case FUNCTION_CALL: {
-                    run(instances, command);
+                    run(instances, statement);
                     break;
+                }
+                case RETURN: {
+                    statementsCtrl = 3;
                 }
                 default:
                     break;
@@ -252,48 +246,34 @@ class Executor {
         }
     }
 
-    private void run(HashMap<String, Instance> instances, TreeNode command) {
-        String functionName = command.elements.get(0);
+    private void run(HashMap<String, Instance> instances, TreeNode statement) {
+        String functionName = statement.elements.get(0);
         // 要复制一份，不然递归调用的时候会影响到后面的语句。
         HashMap<String, Instance> templateFunctionInstances = Adapter.functionNameToInstances.get(functionName);
-        HashMap<String, Instance> functionInstances = getFunctionInstances(templateFunctionInstances);
+        HashMap<String, Instance> functionInstances = Instance.getFunctionInstances(templateFunctionInstances);
         if (!functionInstances.isEmpty()) {
-            setFunctionInstances(instances, command, functionInstances);
-        }
-        run(functionInstances, command.matchedFunction);
-    }
-
-    private HashMap<String, Instance> getFunctionInstances(HashMap<String, Instance> templateFunctionInstances) {
-        HashMap<String, Instance> functionInstances = new HashMap<>();
-        for (Instance instance : templateFunctionInstances.values()) {
-            functionInstances.put((String) instance.name, new Instance(instance.type, (String) instance.name));
-        }
-        return functionInstances;
-    }
-
-    static HashMap<String, Instance> getFunctionInstances(String parameters) {
-        HashMap<String, Instance> functionInstances = new HashMap<>();
-        if (!parameters.equals("")) {
-            String[] formalParameters = parameters.split(", ");
-            for (String formalParameter : formalParameters) {
-                String[] typeAndName = formalParameter.split(" ");
-                Instance formalInstance = new Instance(typeAndName[0], typeAndName[1]);
-                functionInstances.put(typeAndName[1], formalInstance);
+            int size = statement.elements.size() / 2;
+            // 第0个是函数名，第1个开始是实参名
+            for (int i = 0; i < size; i++) {
+                assign(instances, statement.elements.get(i + 1), functionInstances.get(statement.elements.get(size + i + 1)), true);
             }
         }
-        return functionInstances;
-    }
-
-    private void setFunctionInstances(HashMap<String, Instance> instances, TreeNode command, HashMap<String, Instance> functionInstances) {
-        int size = command.elements.size() / 2;
-        // 第0个是函数名，第1个开始是实参名
-        for (int i = 0; i < size; i++) {
-            assign(instances, command.elements.get(i + 1), functionInstances.get(command.elements.get(size + i + 1)), true);
+        run(functionInstances, statement.matchedFunction);
+        if (3 == statementsCtrl) {
+            statementsCtrl = 0;
         }
     }
 
     private void assign(Instance from, Instance to, boolean treatAsGeneral) {
         if (treatAsGeneral) {
+            if (!to.type.equals(from.type)) {
+                if (to.type.equals(Syntax.currentKeywords[0])) {
+                    to.type = from.type;
+                } else {
+                    Adapter.error("Invalid assignment!");
+                    return;
+                }
+            }
             to.setElements(from.getElements());
         } else {
             setValue(to, getValue(from));
@@ -309,7 +289,7 @@ class Executor {
         if (null != to) {
             from = getInstance(instancesFrom, stringFrom);
             if (null != from) {
-                boolean treatAsGeneral = !to.type.equals("void") || isFunctionCall;
+                boolean treatAsGeneral = !from.type.equals(Syntax.currentKeywords[0]) || !to.type.equals(Syntax.currentKeywords[0]) || isFunctionCall;
                 if (isFunctionCall) {
                     to.setArrayElements(from.getArrayElements());
                 }
@@ -386,7 +366,7 @@ class Executor {
         instance[0] = getInstance(instances, parameters[0]);
         instance[1] = getInstance(instances, parameters[1]);
         if (null != instance[0] && null != instance[1]) {
-            if (!instance[0].type.equals("void") && !instance[1].type.equals("void")) {
+            if (!instance[0].type.equals(Syntax.currentKeywords[0]) && !instance[1].type.equals(Syntax.currentKeywords[0])) {
                 return Objects.equals(instance[0].getElements(), instance[1].getElements());
             } else {
                 return Objects.equals(getValue(instance[0]), getValue(instance[1]));
@@ -433,12 +413,12 @@ class Executor {
 
     private boolean isTrue(HashMap<String, Instance> instances, String booleanExpression) {
         // break本就是针对或者说面向或者说基于while的，放到这里实现挺好
-        if (1 == loopCtrl) {
-            loopCtrl = 0;
+        if (1 == statementsCtrl) {
+            statementsCtrl = 0;
             return false;
         }
-        if (2 == loopCtrl) {
-            loopCtrl = 0; // 似乎不用判断直接置为false即可或者说也是一样的
+        if (2 == statementsCtrl) {
+            statementsCtrl = 0; // 似乎不用判断直接置为false即可或者说也是一样的
         }
         if (stop) {
             return false;
@@ -493,8 +473,8 @@ class Executor {
         }
         Instance instance = getInstance(instances, booleanExpression);
         if (null != instance) {
-            if ("void".equals(instance.type)) {
-                return null != instance.getElements().get(0).name;
+            if (Syntax.currentKeywords[0].equals(instance.type)) {
+                return null != instance.getElements().get(null).type;
             } else {
                 // 根据现有处理机制elements为空即变量为空
                 return null != instance.getElements();
@@ -506,23 +486,17 @@ class Executor {
     private void setValue(Instance instance, Object value) {
         if (value instanceof Integer) {
             // 用函数调用而不是直接强制类型转换就不会报“Casting 'value' to 'int' is redundant”了。
-            instance.getElements().get(0).name = getNumber(value);
+            instance.getElements().get(null).type = getNumber(value);
         } else if (value instanceof String) {
-            instance.getElements().get(0).name = getString(value);
+            instance.getElements().get(null).type = getString(value);
         } else {
-            instance.getElements().get(0).name = null;
+            instance.getElements().get(null).type = null;
         }
     }
 
     private Object getValue(Instance instance) {
-        if (null != instance && "void".equals(instance.type)) {
-            Object value = instance.getElements().get(0).name;
-            if (null != value) {
-                return value;
-            } else {
-                // 未初始化的void变量默认都是0
-                return 0;
-            }
+        if (null != instance && Syntax.currentKeywords[0].equals(instance.type)) {
+            return instance.getElements().get(null).type;
         }
         return null;
     }
@@ -659,7 +633,8 @@ class Executor {
         } catch (NumberFormatException e) {
             Instance instance = getInstance(instances, instanceName);
             if (null != instance) {
-                return (Integer) getValue(instance);
+                Object value = getValue(instance);
+                return null != value ? (Integer) value : 0;
             }
             Integer value = null;
             for (int i = 0; i < 2; i++) {
@@ -670,89 +645,6 @@ class Executor {
                 value = getNumber(instances, instanceName, i);
             }
             return value;
-        }
-    }
-
-    static ArrayList<String> getRegularElements(String s) {
-        String separator = " ";
-        ArrayList<String> regularElements = new ArrayList<>();
-        int preIndex = 0;
-        boolean hasQuote = false;
-        for (int i = 0; i < s.length() - 1; i++) {
-            if ('"' == s.charAt(i)) {
-                hasQuote = !hasQuote;
-            }
-            if (s.substring(i).startsWith(separator) && !hasQuote) {
-                String element = s.substring(preIndex, i);
-                regularElements.add(element);
-                preIndex = i + separator.length();
-            }
-        }
-        regularElements.add(s.substring(preIndex));
-        return regularElements;
-    }
-
-    static String getListHead(List list) {
-        return list.treeNodes.get(0).rectangle.getContent();
-    }
-
-    private static String getParameters(List function) {
-        String[] strings = getListHead(function).split(" ", 3);
-        return 3 == strings.length ? strings[2] : "";
-    }
-
-    private static ArrayList<String> getFormalInstanceNames(String parameters) {
-        ArrayList<String> formalInstanceNames = new ArrayList<>();
-        if (!parameters.equals("")) {
-            String[] formalParameters = parameters.split(", ");
-            for (String formalParameter : formalParameters) {
-                String[] typeAndName = formalParameter.split(" ");
-                formalInstanceNames.add(typeAndName[1]);
-            }
-        }
-        return formalInstanceNames;
-    }
-
-    // 函数调用如果还是由变量类型序列确定的话，似乎得运行时才能够做到了。其实不需要，至少对于现在的设计而言，通过处理之前的定义语句即可。这里要注意的是：getCommandType()应当是面向一个TreeNode组的，毕竟main函数也是函数，而函数被设计成比较完美的沙盒机制。至于说使用传统的函数名设计，其实也要校验参数类型，所以直接砍掉函数名也是合理的。这个首先需要找到执行到函数调用语句前执行到的所有语句，可以倒推回去，先找到所在组的首结点，然后找到所在子句的主句，然后再找到主句所在的组的首结点，得到所有的定义语句；难在根据子句找主句。可以遍历vectorLine找到主句的矩形编号，然后遍历vectorRectangle找到组号。这样是可行的，但效率太低了，不如修改TreeNode定义，添加一个指向主句的指针，空间复杂度换时间复杂度。即便如此，对于每一个函数调用语句都回溯似乎也是不可忍受的，只能深度优先遍历之对于函数集合中的每一个函数进行深度优先遍历，这样指向前驱结点的指针preTreeNode也可以不要了。
-    // 之所以要添加预编译就是想要去掉频繁查表的开销，然而还有1张表没有去掉，这就是变量表。变量表似乎不能通过预编译去掉，像C语言对于变量的处理或者说实现应该是借助各种寻址方式，其实变量都是由定义语句生成的，如此说来变量确实可以在预编译时
-    static CommandType getCommandType(TreeNode command) {
-        String fistElement = command.elements.get(0);
-        // 赋值语句认定放在定义语句认定之前就可以让变量名与结构名重名了。
-        if (3 == command.elements.size() && command.elements.get(1).equals("=")) {
-            return CommandType.ASSIGN;
-        }
-        // 函数调用语句在定义语句前认定，是因为函数调用语句一般比定义语句多，减少不必要的判断。
-        if ('{' == fistElement.charAt(0) && '}' == fistElement.charAt(fistElement.length() - 1)) {
-            String functionName = fistElement.substring(1, fistElement.length() - 1);
-            if (Adapter.functions.containsKey(functionName)) {
-                command.matchedFunction = Adapter.functions.get(functionName);
-                command.elements.set(0, functionName);
-                String parameters = getParameters(command.matchedFunction);
-                command.elements.addAll(getFormalInstanceNames(parameters));
-                return CommandType.FUNCTION_CALL;
-            }
-        }
-        // 惟有定义语句是前两个元素都不是关键字而且第一个元素不是被花括号包起来的。
-        if ('{' != fistElement.charAt(0) && Adapter.structures.containsKey(fistElement)) {
-            // 结构定义还是通过结构名查表得，不然函数调用的时候新建Instance不好传入指向结构定义的链表
-            // command.matchedStructureOrFunction = setStructures.get(command.elements.get(0));
-            return CommandType.DEFINE; // 定义语句需要查结构表，实际可以像函数调用那样处理之直接获取结构所在组号这样就不用查了，令结构所在组号为g，则预编译号可以设计成(-8-g)。不过只是得到组号的话还是要根据组号查表才能得到数据，这与根据结构名查表似乎没什么两样。除非将结构所在的组置为定义语句的子句，这样就还需要设置一个标志位表示该子句是临时的，第二次运行时执行本函数会检查该标志位，子句是临时的则先将子句置为null。这样也不用保存组号了，函数调用也应这样处理。其实这样也不好，最好是新增一个链表元素。由于不用保存组号了，这样就可以用enum保存语句类型了。
-        }
-        switch (fistElement) {
-            case "input":
-                return CommandType.INPUT;
-            case "output":
-                return CommandType.OUTPUT;
-            case "if":
-                return CommandType.IF;
-            case "while":
-                return CommandType.WHILE;
-            case "break":
-                return CommandType.BREAK;
-            case "continue":
-                return CommandType.CONTINUE;
-            default:
-                return CommandType.UNKNOWN;
         }
     }
 }

@@ -1,21 +1,29 @@
 package com.limshx.ippotim;
 
 import javax.imageio.ImageIO;
+import javax.swing.AbstractAction;
+import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.WindowConstants;
+import java.awt.FlowLayout;
 import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedList;
 
 
 class Main extends JFrame {
@@ -23,8 +31,8 @@ class Main extends JFrame {
         super(s);
     }
 
+    static String homeDirectory;
     private static File openedFile;
-    private static String homeDirectory;
     private static int screenWidth, screenHeight;
 
     private static void initScreenSize() {
@@ -32,7 +40,7 @@ class Main extends JFrame {
         screenHeight = Toolkit.getDefaultToolkit().getScreenSize().height;
     }
 
-    private static void setWindowCenter(JFrame jFrame) {
+    static void setWindowCenter(JFrame jFrame) {
         jFrame.setLocation(screenWidth / 2 - jFrame.getWidth() / 2, screenHeight / 2 - jFrame.getHeight() / 2);
     }
 
@@ -88,7 +96,7 @@ class Main extends JFrame {
             if (null != file) {
                 openedFile = file;
                 homeDirectory = openedFile.getParent() + "/";
-                JOptionPane.showMessageDialog(null, "Imported \"" + openedFile.getName() + "\"");
+                drawTable.showMessage("Imported \"" + openedFile.getName() + "\"");
                 drawTable.adapter.getCodeFromXml(openedFile);
                 drawTable.doRepaint();
             }
@@ -121,9 +129,61 @@ class Main extends JFrame {
             drawTable.adapter.clear();
             drawTable.doRepaint();
         });
+        jMenuItems[3] = new JMenuItem("Settings");
+        jMenuItems[3].addActionListener(actionEvent -> {
+            String[] defaultKeywords = drawTable.adapter.getDefaultKeywords();
+            String[] currentKeywords = drawTable.adapter.getCurrentKeywords();
+            JTextField[] jTextFields = new JTextField[currentKeywords.length];
+            JFrame jFrame = new JFrame("Settings");
+            jFrame.setLayout(new FlowLayout(FlowLayout.RIGHT));
+            for (int i = 0; i < currentKeywords.length; i++) {
+                JPanel jPanel = new JPanel();
+                JLabel jLabel = new JLabel(defaultKeywords[i] + " -> ");
+                jPanel.add(jLabel);
+                jTextFields[i] = new JTextField(currentKeywords[i], 8);
+                jPanel.add(jTextFields[i]);
+                jFrame.add(jPanel);
+            }
+            JButton[] jButtons = new JButton[2];
+            jButtons[0] = new JButton("   OK   ");
+            jButtons[1] = new JButton("Cancel");
+            jButtons[0].addActionListener(new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    jFrame.setVisible(false);
+                    LinkedList<String> linkedList = new LinkedList<>();
+                    for (int i = 0; i < currentKeywords.length; i++) {
+                        String keyword = jTextFields[i].getText().replace(" ", "");
+                        if (!linkedList.contains(keyword)) {
+                            linkedList.add(keyword);
+                        }
+                        currentKeywords[i] = keyword;
+                    }
+                    if (currentKeywords.length == linkedList.size()) {
+                        int result = JOptionPane.showConfirmDialog(null, "Make the keywords default?");
+                        drawTable.adapter.setCurrentKeywords(currentKeywords, JOptionPane.YES_OPTION == result);
+                    } else {
+                        drawTable.showMessage("A keyword must be different from the others!");
+                    }
+                }
+            });
+            jButtons[1].addActionListener(new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    jFrame.setVisible(false);
+                }
+            });
+            jFrame.add(jButtons[0]);
+            jFrame.add(jButtons[1]);
+            jFrame.setSize(screenHeight / 5, (int) (screenHeight / 2.9));
+            setWindowCenter(jFrame);
+            jFrame.setAlwaysOnTop(true);
+            jFrame.setVisible(true);
+        });
         jMenu.add(jMenuItems[0]);
         jMenu.add(jMenuItems[1]);
         jMenu.add(jMenuItems[2]);
+        jMenu.add(jMenuItems[3]);
         jMenuBar.add(jMenu);
         jMenu = new JMenu("Code");
         jMenuItems[0] = new JMenuItem("Run");
@@ -155,21 +215,21 @@ class Main extends JFrame {
             if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.create("Member");
             } else {
-                JOptionPane.showMessageDialog(null, "Please select a rectangle first!");
+                drawTable.showMessage("Please select a rectangle first!");
             }
         });
         jMenuItems[2].addActionListener(actionEvent -> {
             if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.create("Modify");
             } else {
-                JOptionPane.showMessageDialog(null, "Please select a rectangle first!");
+                drawTable.showMessage("Please select a rectangle first!");
             }
         });
         jMenuItems[3].addActionListener(actionEvent -> {
             if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.adapter.copy();
             } else {
-                JOptionPane.showMessageDialog(null, "Please select a rectangle first!");
+                drawTable.showMessage("Please select a rectangle first!");
             }
         });
         jMenuItems[4].addActionListener(actionEvent -> {
@@ -177,7 +237,7 @@ class Main extends JFrame {
                 drawTable.adapter.paste();
                 drawTable.doRepaint();
             } else {
-                JOptionPane.showMessageDialog(null, "Please select a rectangle first!");
+                drawTable.showMessage("Please select a rectangle first!");
             }
         });
         jMenuItems[5].addActionListener(actionEvent -> {
@@ -185,7 +245,7 @@ class Main extends JFrame {
                 drawTable.adapter.remove();
                 drawTable.doRepaint();
             } else {
-                JOptionPane.showMessageDialog(null, "Please select a rectangle first!");
+                drawTable.showMessage("Please select a rectangle first!");
             }
         });
         jMenuItems[6].addActionListener(actionEvent -> {
@@ -194,7 +254,7 @@ class Main extends JFrame {
                 drawTable.adapter.sort(capacity);
                 drawTable.doRepaint();
             } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(null, "Not an integer!");
+                drawTable.showMessage("Not an integer!");
             }
         });
         jMenu.add(jMenuItems[0]);
@@ -217,7 +277,7 @@ class Main extends JFrame {
                     if (!opengl.exists()) {
                         try {
                             if (opengl.createNewFile()) {
-                                JOptionPane.showMessageDialog(null, "Restart to take effect!");
+                                drawTable.showMessage("Restart to take effect!");
                             }
                         } catch (IOException e1) {
                             e1.printStackTrace();
@@ -226,7 +286,7 @@ class Main extends JFrame {
                 } else {
                     if (opengl.exists()) {
                         if (opengl.delete()) {
-                            JOptionPane.showMessageDialog(null, "Restart to take effect!");
+                            drawTable.showMessage("Restart to take effect!");
                         }
                     }
                 }

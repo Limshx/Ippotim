@@ -6,12 +6,12 @@ android {
     defaultConfig {
         minSdkVersion 19
         targetSdkVersion 28
+        return void
     }
     buildTypes {
         release {
             minifyEnabled = true as com.android.builder.model.BuildType
             zipAlignEnabled = true as com.android.builder.model.BuildType
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }

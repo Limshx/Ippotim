@@ -36,10 +36,14 @@ abstract class InfoBox {  // 当初这个是放在MainActivity里，想让DrawTa
     }
 
     void showDialog() {
-        showDialog(true, true);
+        showDialog(true, true, false);
     }
 
-    void showDialog(final boolean negativeCancel, final boolean positiveCancel) {
+    void showDialog(boolean negativeCancel, boolean positiveCancel) {
+        showDialog(negativeCancel, positiveCancel, false);
+    }
+
+    void showDialog(final boolean negativeCancel, final boolean positiveCancel, boolean canceledOnTouchOutside) {
         View.OnClickListener[] onClickListener = new View.OnClickListener[2];
         onClickListener[0] = new View.OnClickListener() {
             @Override
@@ -61,7 +65,7 @@ abstract class InfoBox {  // 当初这个是放在MainActivity里，想让DrawTa
         };
         adb.setView(view).setTitle(title).setNegativeButton(negative, null).setPositiveButton(positive, null);
         alertDialog = adb.show();
-        alertDialog.setCanceledOnTouchOutside(false);
+        alertDialog.setCanceledOnTouchOutside(canceledOnTouchOutside);
         alertDialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(onClickListener[0]);
         alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(onClickListener[1]);
     }

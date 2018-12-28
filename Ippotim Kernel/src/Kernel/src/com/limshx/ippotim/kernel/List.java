@@ -1,4 +1,4 @@
-package Kernel;
+package com.limshx.ippotim.kernel;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -23,6 +23,10 @@ class List {
         this.y = y;
         preList = list;
         registerList(this);
+    }
+
+    static String getListHead(List list) {
+        return list.treeNodes.get(0).rectangle.getContent();
     }
 
     static void unregisterList(List list) {

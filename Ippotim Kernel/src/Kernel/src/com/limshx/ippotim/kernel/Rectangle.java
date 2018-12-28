@@ -1,4 +1,4 @@
-package Kernel;
+package com.limshx.ippotim.kernel;
 
 class Rectangle {
     static int width;

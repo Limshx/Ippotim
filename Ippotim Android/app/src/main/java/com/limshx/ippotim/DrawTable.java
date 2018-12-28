@@ -1,7 +1,5 @@
 package com.limshx.ippotim;
 
-import Kernel.Adapter;
-import Kernel.GraphicsOperations;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -14,6 +12,10 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
+import com.limshx.ippotim.kernel.Adapter;
+import com.limshx.ippotim.kernel.GraphicsOperations;
+
+import java.io.File;
 
 public class DrawTable extends View implements GraphicsOperations {
     DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -133,8 +135,8 @@ public class DrawTable extends View implements GraphicsOperations {
 
     private void initKernel(GraphicsOperations graphicsOperation) {
         double scale = getScale();
-        adapter = new Adapter(graphicsOperation, getWidth(), getHeight(), scale);
-        Terminal.fontSize = (int) (24 / scale);
+        adapter = new Adapter(graphicsOperation, getWidth(), getHeight(), scale, new File(MainActivity.homeDirectory + "ippotim.properties"));
+        Terminal.fontSize = (int) (32 / scale);
     }
 
     boolean isScreenChanged = false;
@@ -224,8 +226,14 @@ public class DrawTable extends View implements GraphicsOperations {
         });
     }
 
-    void doRepaint() {
-        invalidate();
+    @Override
+    public void doRepaint() {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                invalidate();
+            }
+        });
     }
 
     @Override
@@ -274,7 +282,7 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     private boolean inputted;
-    private String input;
+    private Object input;
 
     private void waitForInput() {
         while (!inputted) {
@@ -288,26 +296,32 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     @Override
-    public String getInput(final String name) {
+    public Object getInput() {
         post(new Runnable() {
             @Override
             public void run() {
-                terminal.infoBox[1] = new InfoBox("Input for \"" + name + "\" :", "Hide", "OK", new EditText(context), context) {
+                terminal.infoBox[1] = new InfoBox("Input a value :", "String", "Number", new EditText(context), context) {
                     @Override
                     void onNegative() {
-                    }
-
-                    @Override
-                    void onPositive() {
-                        terminal.infoBox[1] = null;
                         input = ((EditText) getView()).getText().toString();
                         inputted = true;
                     }
+                    @Override
+                    void onPositive() {
+                        try {
+                            input = Integer.parseInt(((EditText) getView()).getText().toString());
+                            inputted = true;
+                            getAlertDialog().cancel();
+                        } catch (NumberFormatException e) {
+                            showMessage("Not an integer!");
+                        }
+                    }
                 };
-                terminal.infoBox[1].showDialog();
+                terminal.infoBox[1].showDialog(true, false, true);
             }
         });
         waitForInput();
+        terminal.infoBox[1] = null;
         return input;
     }
 }

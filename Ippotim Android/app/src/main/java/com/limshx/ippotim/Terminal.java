@@ -1,6 +1,5 @@
 package com.limshx.ippotim;
 
-import Kernel.Adapter;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -13,14 +12,15 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ScrollView;
 import android.widget.TextView;
-
 import java.util.ArrayList;
+import com.limshx.ippotim.kernel.Adapter;
 
 public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
     private SurfaceHolder holder;
     boolean running;
     private Paint paint;
     static int fontSize;
+    private float gap;
     private int linesCount;
     private float preX, preY;
     private boolean readyForGo = true;
@@ -142,6 +142,9 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                 if (currentClickTime - preClickTime < 300) {
                     textView = new TextView(context);
                     textView.setTextIsSelectable(true);
+                    // textView.setTextColor(Color.BLACK);
+                    // textView.setTypeface(Typeface.create(Typeface.SERIF, Typeface.NORMAL));
+                    // textView.setTextSize(fontSize);
                     // 装ScrollView里可以滚得更快或者说快得多
                     ScrollView scrollView = new ScrollView(context);
                     scrollView.addView(textView);
@@ -208,7 +211,7 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
     }
 
     private void updateLinesCount() {
-        linesCount = getHeight() / fontSize;
+        linesCount = (int) (getHeight() / gap);
     }
 
     private boolean hasEmoji(String s) {
@@ -242,10 +245,6 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                 list.get(list.size() - 1).append(s, 0, freeSpace);
                 list.add(new StringBuilder());
                 String remainingString = s.substring(freeSpace);
-                // 换行只能由单独成句的output产生或者说生成，不会跟别的在一起
-//                if (remainingString.startsWith("\n")) {
-//                    remainingString = remainingString.substring(1);
-//                }
                 if (!remainingString.equals("")) {
                     getOutput(remainingString);
                 }
@@ -255,16 +254,6 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                 }
                 list.get(list.size() - 1).append(s);
             }
-//            while (!canPrintInOneLine(printStringBuilder.toString())) {
-//                // 先切片再存进去
-//                String cutString = genCutString(printStringBuilder.toString());
-//                list.add(cutString);
-//                printStringBuilder.delete(0, cutString.length());
-//                // 这句是无用的，因为cutStrings[1].equals("")说明cutStrings[0]可以一行打印完，就不会进入循环了，这种优化也很耐人寻味。
-////            if (cutStrings[1].equals("")) {
-////                break;
-////            }
-//            }
         }
         hasOutput = true;
         // 被动式刷新得等绘制完才返回，有瓶颈，会很慢。
@@ -293,8 +282,11 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
     private void initPaint() {
         paint = new Paint();
         paint.setColor(Color.BLACK);
-        paint.setTypeface(Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD));
+        paint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.NORMAL));
+        paint.setAntiAlias(true);
         paint.setTextSize(fontSize);
+        // 本来直接用fontSize就可以了，但绘制emoji会有重叠，所以乘以1.16加大间隔。
+        gap = fontSize * 1.16f;
     }
 
     private void drawText(int focusPoint) {
@@ -303,14 +295,11 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
 
     private void drawText(int focusPoint, float x) {
         Canvas canvas = holder.lockCanvas(new Rect(0, 0, getWidth(), getHeight()));
-        if (canvas == null) {
-            return;
-        }
         canvas.drawColor(Color.WHITE);
-        float y = paint.getTextSize();
+        float y = gap;
         for (int i = focusPoint <= linesCount ? 0 : focusPoint - linesCount; i < focusPoint; i++) {
             canvas.drawText(list.get(i).toString(), baseX + x, y, paint);
-            y += paint.getTextSize();
+            y += gap;
         }
         newestChange = x;
         holder.unlockCanvasAndPost(canvas);// 解锁画布，提交画好的图像

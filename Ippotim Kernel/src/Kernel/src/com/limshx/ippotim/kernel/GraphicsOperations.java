@@ -1,4 +1,4 @@
-package Kernel;
+package com.limshx.ippotim.kernel;
 
 public interface GraphicsOperations {
     void drawRect(int x, int y, int width, int height, int color);
@@ -13,9 +13,11 @@ public interface GraphicsOperations {
 
     int getPixelWidth(String s, int fontSize);
 
-    String getInput(String name);
+    Object getInput();
 
     void create(String s);
 
     void showMessage(String s);
+
+    void doRepaint();
 }

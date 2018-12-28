@@ -1,5 +1,0 @@
-package Kernel;
-
-enum CommandType {
-    DEFINE, ASSIGN, INPUT, OUTPUT, IF, WHILE, BREAK, CONTINUE, FUNCTION_CALL, UNKNOWN
-}
