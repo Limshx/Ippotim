@@ -149,7 +149,7 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                     ScrollView scrollView = new ScrollView(context);
                     scrollView.addView(textView);
                     updateTextView();
-                    new InfoBox(null, "Cancel", "OK", scrollView, context) {
+                    new InfoBox(null, "Cancel", "OK", scrollView) {
                         @Override
                         void onNegative() {
 
@@ -295,6 +295,10 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
 
     private void drawText(int focusPoint, float x) {
         Canvas canvas = holder.lockCanvas(new Rect(0, 0, getWidth(), getHeight()));
+        // 这句很必要，不然运行中关闭输出对话框就会空指针异常。
+        if (null == canvas) {
+            return;
+        }
         canvas.drawColor(Color.WHITE);
         float y = gap;
         for (int i = focusPoint <= linesCount ? 0 : focusPoint - linesCount; i < focusPoint; i++) {

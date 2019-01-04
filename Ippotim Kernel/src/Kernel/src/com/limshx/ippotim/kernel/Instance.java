@@ -66,8 +66,12 @@ class Instance {
     }
 
     private static void putInstance(HashMap<String, Instance> instances, String type, String name) {
-        if (Syntax.isKeyword(name)) {
-            Adapter.error("An instance name can not be a keyword!");
+        if (!Adapter.structures.containsKey(type)) {
+            Adapter.error("The structure \"" + type + "\" is not defined!");
+            return;
+        }
+        if (Syntax.isInvalidIdentifier(name)) {
+            Adapter.error("The identifier \"" + name + "\" is invalid!");
             return;
         }
         if (!instances.containsKey(name)) {

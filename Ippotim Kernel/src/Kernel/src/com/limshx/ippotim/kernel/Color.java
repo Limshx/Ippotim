@@ -5,6 +5,7 @@ class Color {
     static final int WHITE = 0xffffffff;
     static final int RED = 0xffff0000;
     static final int YELLOW = 0xffffff00;
+    static final int BLUE = 0xff0000ff;
 
     int rectangleColor;
     int stringColor;

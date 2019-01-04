@@ -162,6 +162,8 @@ public class DrawTable extends View implements GraphicsOperations {
         return Math.sqrt((1280 * 720d) / (displayMetrics.widthPixels * displayMetrics.heightPixels));
     }
 
+    private String text;
+
     @Override
     public void create(final String type) { // 这里不能sleep()，不然会阻塞主线程卡死，getInput()没事是因为不是主线程
         String title;
@@ -180,29 +182,30 @@ public class DrawTable extends View implements GraphicsOperations {
                 title = null;
                 break;
         }
-        InfoBox infoBox = new InfoBox(title, "Cancel", "OK", new EditText(context), context) {
+        final EditText editText = new EditText(context);
+        InfoBox infoBox = new InfoBox(title, "Cancel", "OK", editText) {
             @Override
             void onNegative() {
             }
 
             @Override
             void onPositive() {
-                String input = ((EditText) getView()).getText().toString();
+                text = editText.getText().toString();
                 // 去掉首尾空格符，这样就不可能调用到Ippotim语言里的main函数了。
-                input = input.trim();
-                if (!input.isEmpty()) {
+                text = text.trim();
+                if (!text.isEmpty()) {
                     switch (type) {
                         case "Function":
-                            adapter.createFunction(input);
+                            adapter.createFunction(text);
                             break;
                         case "Structure":
-                            adapter.createStructure(input);
+                            adapter.createStructure(text);
                             break;
                         case "Member":
-                            adapter.insert(input);
+                            adapter.insert(text);
                             break;
                         case "Modify":
-                            adapter.modify(input);
+                            adapter.modify(text);
                         default:
                             break;
                     }
@@ -212,7 +215,9 @@ public class DrawTable extends View implements GraphicsOperations {
         };
         infoBox.showDialog();
         if (type.equals("Modify")) {
-            ((EditText) infoBox.getView()).setText(adapter.getRectangleContent());
+            editText.setText(adapter.getRectangleContent());
+        } else {
+            editText.setText(text);
         }
     }
 
@@ -300,16 +305,22 @@ public class DrawTable extends View implements GraphicsOperations {
         post(new Runnable() {
             @Override
             public void run() {
-                terminal.infoBox[1] = new InfoBox("Input a value :", "String", "Number", new EditText(context), context) {
+                final EditText editText = new EditText(context);
+                terminal.infoBox[1] = new InfoBox("Input a value :", "String", "Number", editText) {
                     @Override
                     void onNegative() {
-                        input = ((EditText) getView()).getText().toString();
-                        inputted = true;
+                        input = editText.getText().toString();
+                        if (!((String) input).contains("\"")) {
+                            inputted = true;
+                            getAlertDialog().cancel();
+                        } else {
+                            showMessage("Double quotation mark is forbidden!");
+                        }
                     }
                     @Override
                     void onPositive() {
                         try {
-                            input = Integer.parseInt(((EditText) getView()).getText().toString());
+                            input = Integer.parseInt((editText.getText().toString()));
                             inputted = true;
                             getAlertDialog().cancel();
                         } catch (NumberFormatException e) {
@@ -317,7 +328,7 @@ public class DrawTable extends View implements GraphicsOperations {
                         }
                     }
                 };
-                terminal.infoBox[1].showDialog(true, false, true);
+                terminal.infoBox[1].showDialog(false, false, true);
             }
         });
         waitForInput();

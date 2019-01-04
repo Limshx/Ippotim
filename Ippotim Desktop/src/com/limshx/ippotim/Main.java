@@ -134,7 +134,7 @@ class Main extends JFrame {
             String[] defaultKeywords = drawTable.adapter.getDefaultKeywords();
             String[] currentKeywords = drawTable.adapter.getCurrentKeywords();
             JTextField[] jTextFields = new JTextField[currentKeywords.length];
-            JFrame jFrame = new JFrame("Settings");
+            JFrame jFrame = new JFrame();
             jFrame.setLayout(new FlowLayout(FlowLayout.RIGHT));
             for (int i = 0; i < currentKeywords.length; i++) {
                 JPanel jPanel = new JPanel();
@@ -150,7 +150,6 @@ class Main extends JFrame {
             jButtons[0].addActionListener(new AbstractAction() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    jFrame.setVisible(false);
                     LinkedList<String> linkedList = new LinkedList<>();
                     for (int i = 0; i < currentKeywords.length; i++) {
                         String keyword = jTextFields[i].getText().replace(" ", "");
@@ -161,10 +160,15 @@ class Main extends JFrame {
                     }
                     if (currentKeywords.length == linkedList.size()) {
                         int result = JOptionPane.showConfirmDialog(null, "Make the keywords default?");
-                        drawTable.adapter.setCurrentKeywords(currentKeywords, JOptionPane.YES_OPTION == result);
+                        boolean done = drawTable.adapter.setCurrentKeywords(currentKeywords, JOptionPane.YES_OPTION == result);
+                        if (!done) {
+                            return;
+                        }
                     } else {
                         drawTable.showMessage("A keyword must be different from the others!");
+                        return;
                     }
+                    jFrame.setVisible(false);
                 }
             });
             jButtons[1].addActionListener(new AbstractAction() {
@@ -175,7 +179,7 @@ class Main extends JFrame {
             });
             jFrame.add(jButtons[0]);
             jFrame.add(jButtons[1]);
-            jFrame.setSize(screenHeight / 5, (int) (screenHeight / 2.9));
+            jFrame.setSize(screenHeight / 5, (int) (screenHeight / 2.7));
             setWindowCenter(jFrame);
             jFrame.setAlwaysOnTop(true);
             jFrame.setVisible(true);
@@ -205,31 +209,31 @@ class Main extends JFrame {
                 drawTable.adapter.stop();
             }
         });
-        jMenuItems[0].addActionListener(actionEvent -> {
+        jMenuItems[0].addActionListener(actionEvent -> new Thread(() -> {
             drawTable.jTextArea.setText("");
             drawTable.stringBuilder = new StringBuilder();
             jFrame.setVisible(true);
-            new Thread(drawTable.adapter::run).start();
-        });
+            drawTable.adapter.run();
+        }).start());
         jMenuItems[1].addActionListener(actionEvent -> {
             if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.create("Member");
             } else {
-                drawTable.showMessage("Please select a rectangle first!");
+                drawTable.showMessage("Please select a statement first!");
             }
         });
         jMenuItems[2].addActionListener(actionEvent -> {
             if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.create("Modify");
             } else {
-                drawTable.showMessage("Please select a rectangle first!");
+                drawTable.showMessage("Please select a statement first!");
             }
         });
         jMenuItems[3].addActionListener(actionEvent -> {
             if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.adapter.copy();
             } else {
-                drawTable.showMessage("Please select a rectangle first!");
+                drawTable.showMessage("Please select a statement first!");
             }
         });
         jMenuItems[4].addActionListener(actionEvent -> {
@@ -237,7 +241,7 @@ class Main extends JFrame {
                 drawTable.adapter.paste();
                 drawTable.doRepaint();
             } else {
-                drawTable.showMessage("Please select a rectangle first!");
+                drawTable.showMessage("Please select a statement first!");
             }
         });
         jMenuItems[5].addActionListener(actionEvent -> {
@@ -245,7 +249,7 @@ class Main extends JFrame {
                 drawTable.adapter.remove();
                 drawTable.doRepaint();
             } else {
-                drawTable.showMessage("Please select a rectangle first!");
+                drawTable.showMessage("Please select a statement first!");
             }
         });
         jMenuItems[6].addActionListener(actionEvent -> {

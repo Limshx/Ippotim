@@ -130,9 +130,6 @@ class Executor {
 
     // 之前是方法重载实现局部变量功能，使用新方案后就不用了
     private Instance getInstance(HashMap<String, Instance> instances, String instanceName) {
-        if (!getType(instanceName).equals("instance")) {
-            return null;
-        }
         Instance instance = null;
         // 一般的形式是类似a[a[a+a].a[a+a]].a[a[a+a].a[a+a]]，这样是不能简单split的，需要像括号匹配那样进行整体分离。
         LinkedList<String> elementChains = getChains(instanceName, true);
@@ -155,6 +152,10 @@ class Executor {
             TreeNode statement = list.treeNodes.get(index);
             Adapter.selectedList = list;
             Adapter.selectedTreeNodeIndex = index;
+            if (null == statement.statementType) {
+                Syntax.updateStatementType(statement);
+                Adapter.error("Invalid statement!");
+            }
             switch (statement.statementType) {
                 case DEFINE: {
                     // 这样就要求变量名不能与结构名有相同的，否则会导致数组越界异常，比如S S之定义结构S的一个变量S，然后S之调用结构S的一个函数，就会误认为这个S是结构名而非变量名，从而导致下面的parameters[1]数组越界
@@ -187,7 +188,11 @@ class Executor {
                         for (int i = 1; i < statement.elements.size(); i++) {
                             String element = statement.elements.get(i);
                             Object value = getValue(instances, element);
-                            stringBuilder.append(null != value ? value : 0);
+                            if (null != value) {
+                                stringBuilder.append(value);
+                            } else {
+                                Adapter.error("Only instances of \"" + Syntax.currentKeywords[0] + "\" can be outputted!");
+                            }
                         }
                     } else {
                         // 当output单独成句之不接任何参数，就是输出换行符，这个设计简直巧夺天工。
@@ -284,16 +289,30 @@ class Executor {
         setValue(to, getValue(instancesFrom, stringFrom));
     }
 
+    private void assign(Instance instance) {
+        if (instance.type.equals(Syntax.currentKeywords[0])) {
+            setValue(instance, null);
+        } else {
+            instance.setElements(null);
+        }
+    }
+
     private void assign(HashMap<String, Instance> instancesFrom, String stringFrom, Instance to, boolean isFunctionCall) {
         Instance from;
         if (null != to) {
-            from = getInstance(instancesFrom, stringFrom);
-            if (null != from) {
-                boolean treatAsGeneral = !from.type.equals(Syntax.currentKeywords[0]) || !to.type.equals(Syntax.currentKeywords[0]) || isFunctionCall;
-                if (isFunctionCall) {
-                    to.setArrayElements(from.getArrayElements());
+            if (stringFrom.equals(Syntax.currentKeywords[9])) {
+                assign(to);
+                return;
+            }
+            if (getType(stringFrom).equals("instance")) {
+                from = getInstance(instancesFrom, stringFrom);
+                if (null != from) {
+                    boolean treatAsGeneral = !from.type.equals(Syntax.currentKeywords[0]) || !to.type.equals(Syntax.currentKeywords[0]) || isFunctionCall;
+                    if (isFunctionCall) {
+                        to.setArrayElements(from.getArrayElements());
+                    }
+                    assign(from, to, treatAsGeneral);
                 }
-                assign(from, to, treatAsGeneral);
             } else {
                 assign(instancesFrom, stringFrom, to);
             }
@@ -362,15 +381,18 @@ class Executor {
     }
 
     private boolean isTheSame(HashMap<String, Instance> instances, String[] parameters) {
-        Instance[] instance = new Instance[2];
-        instance[0] = getInstance(instances, parameters[0]);
-        instance[1] = getInstance(instances, parameters[1]);
-        if (null != instance[0] && null != instance[1]) {
-            if (!instance[0].type.equals(Syntax.currentKeywords[0]) && !instance[1].type.equals(Syntax.currentKeywords[0])) {
-                return Objects.equals(instance[0].getElements(), instance[1].getElements());
-            } else {
-                return Objects.equals(getValue(instance[0]), getValue(instance[1]));
+        if (getType(parameters[0]).equals("instance") && getType(parameters[1]).equals("instance")) {
+            Instance[] instance = new Instance[2];
+            instance[0] = getInstance(instances, parameters[0]);
+            instance[1] = getInstance(instances, parameters[1]);
+            if (null != instance[0] && null != instance[1]) {
+                if (!instance[0].type.equals(Syntax.currentKeywords[0]) && !instance[1].type.equals(Syntax.currentKeywords[0])) {
+                    return Objects.equals(instance[0].getElements(), instance[1].getElements());
+                } else {
+                    return Objects.equals(getValue(instance[0]), getValue(instance[1]));
+                }
             }
+            return false;
         } else {
             return Objects.equals(getValue(instances, parameters[0]), getValue(instances, parameters[1]));
         }
@@ -429,7 +451,7 @@ class Executor {
 
         boolean result = true;
         int preOperation = 0; // 0是“&&”，1是“||”
-        boolean metOperation = false;
+//        boolean metOperation = false;
 
         int start = 0;
         int nextStart = 0;
@@ -439,23 +461,23 @@ class Executor {
             if (nextStart < booleanExpression.length()) {
                 String s = booleanExpression.substring(nextStart);
                 if (s.startsWith("&&") || s.startsWith("||")) {
-                    metOperation = true;
+//                    metOperation = true;
                     result = isTrue(instances, booleanExpression, start, nextStart, preOperation, result);
                     preOperation = s.startsWith("&&") ? 0 : 1;
                     nextStart += 2; // 暂时写死为2
                     start = nextStart;
                 }
-            } else if (0 == start) {
-                if ('(' == booleanExpression.charAt(0)) {
-                    String subExpression = booleanExpression.substring(1, booleanExpression.length() - 1);
-                    return isTrue(instances, subExpression);
-                }
-            } else {
-                result = isTrue(instances, booleanExpression, start, nextStart, preOperation, result);
             }
         }
-        if (!metOperation) {
-            return isTrueBasic(instances, booleanExpression);
+        if (0 == start) {
+            if ('(' == booleanExpression.charAt(0) && ')' == booleanExpression.charAt(booleanExpression.length() - 1)) {
+                String subExpression = booleanExpression.substring(1, booleanExpression.length() - 1);
+                return isTrue(instances, subExpression);
+            } else {
+                return isTrueBasic(instances, booleanExpression);
+            }
+        } else {
+            result = isTrue(instances, booleanExpression, start, nextStart, preOperation, result);
         }
         return result;
     }
@@ -495,8 +517,9 @@ class Executor {
     }
 
     private Object getValue(Instance instance) {
-        if (null != instance && Syntax.currentKeywords[0].equals(instance.type)) {
-            return instance.getElements().get(null).type;
+        if (Syntax.currentKeywords[0].equals(instance.type)) {
+            Object value = instance.getElements().get(null).type;
+            return null != value ? value : 0;
         }
         return null;
     }
@@ -504,7 +527,8 @@ class Executor {
     private Object getValue(HashMap<String, Instance> instances, String instanceName) {
         String type = getType(instanceName);
         if (type.equals("instance")) {
-            return getValue(getInstance(instances, instanceName));
+            Instance instance = getInstance(instances, instanceName);
+            return null != instance ? getValue(instance) : null;
         } else if (type.equals("string")) {
             return getString(instances, instanceName);
         } else {
@@ -603,23 +627,27 @@ class Executor {
                     addOrMul = instanceName.charAt(nextStart) == operations[operationType][0] ? 1 : -1;
                     start = nextStart + 1;
                 }
-            } else if (0 == start) {
-                if (1 == operationType && '(' == instanceName.charAt(0)) {
-                    return getNumber(instances, instanceName.substring(1, instanceName.length() - 1));
-                }
-                // start为0说明没有遇到运算符
-                return null;
-            } else {
-                // 调用本函数之前先整体判断了下，如果整个字符串是一个变量名，就不会进来这里了，所以走到这一步说明之前是遇到了操作符的。
-                value = getNumber(value, getNumber(instances, instanceName.substring(start, nextStart)), addOrMul, operationType);
             }
         }
-//        if (!metOperation) {
-//            if (1 == operationType) {
-//                return (Integer) getValue(instances, instanceName, "number");
-//            }
-//            return null;
-//        }
+        if (0 == start) {
+            if (1 == operationType) {
+                if ('(' == instanceName.charAt(0) && ')' == instanceName.charAt(instanceName.length() - 1)) {
+                    return getNumber(instances, instanceName.substring(1, instanceName.length() - 1));
+                } else {
+                    Instance instance = getInstance(instances, instanceName);
+                    if (null != instance) {
+                        if (Syntax.currentKeywords[0].equals(instance.type)) {
+                            return (Integer) getValue(instance);
+                        }
+                        Adapter.error("\"" + instanceName + "\" is not an instance of \"" + Syntax.currentKeywords[0] + "\"!");
+                    }
+                }
+            }
+            // start为0说明没有遇到运算符
+            return null;
+        } else {
+            value = getNumber(value, getNumber(instances, instanceName.substring(start, nextStart)), addOrMul, operationType);
+        }
         return value;
     }
 
@@ -631,11 +659,6 @@ class Executor {
         try {
             return Integer.parseInt(instanceName); // 数太大溢出会导致解析错误无限循环，这个提前报错即可，报错功能后续会添加
         } catch (NumberFormatException e) {
-            Instance instance = getInstance(instances, instanceName);
-            if (null != instance) {
-                Object value = getValue(instance);
-                return null != value ? (Integer) value : 0;
-            }
             Integer value = null;
             for (int i = 0; i < 2; i++) {
                 // 如果判空返回放到循环后面，循环结束后就是直接返回null了，这样会到处报空指针警告。

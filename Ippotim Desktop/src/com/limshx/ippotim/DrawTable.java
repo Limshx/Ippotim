@@ -31,17 +31,17 @@ class DrawTable extends JPanel implements GraphicsOperations {
     private Font font;
     JTextArea jTextArea = new JTextArea();
 
+    private String s;
     public void create(String type) {
-        String s;
         switch (type) {
             case "Function":
-                s = JOptionPane.showInputDialog("Input a function head :");
+                s = JOptionPane.showInputDialog("Input a function head :", s);
                 break;
             case "Structure":
-                s = JOptionPane.showInputDialog("Input a structure name :");
+                s = JOptionPane.showInputDialog("Input a structure name :", s);
                 break;
             case "Member":
-                s = JOptionPane.showInputDialog("Input a statement :");
+                s = JOptionPane.showInputDialog("Input a statement :", s);
                 break;
             case "Modify":
                 s = JOptionPane.showInputDialog("Input a statement :", adapter.getRectangleContent());
@@ -182,8 +182,12 @@ class DrawTable extends JPanel implements GraphicsOperations {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
                 input = jTextField.getText();
-                inputted = true;
-                jFrame.setVisible(false);
+                if (!((String) input).contains("\"")) {
+                    inputted = true;
+                    jFrame.setVisible(false);
+                } else {
+                    showMessage("Double quotation mark is forbidden!");
+                }
             }
         });
         jButtons[1].addActionListener(new AbstractAction() {

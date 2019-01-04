@@ -5,8 +5,8 @@ class Arrow {
     List list;
 
     Arrow(int x, int y, List list) {
-        xFrom = x + Rectangle.width / 2;
-        yFrom = y + Rectangle.height / 2;
+        xFrom = x + Size.width / 2;
+        yFrom = y + Size.height / 2;
         this.list = list;
     }
 
@@ -21,16 +21,16 @@ class Arrow {
 
     void draw() {
         int xTo, yTo;
-        xTo = list.x + Rectangle.width / 2;
-        yTo = list.y + Rectangle.height / 2;
+        xTo = list.x + Size.width / 2;
+        yTo = list.y + Size.height / 2;
         if (inScreen(xFrom, yFrom) || inScreen(xTo, yTo)) {
             Adapter.graphicsOperations.drawLine(xFrom, yFrom, xTo, yTo);
             int xa, ya, xb, yb;
             int distance = Math.abs(distance(xFrom, yFrom, xTo, yTo));
-            xa = xTo + Rectangle.arrowSize * ((xFrom - xTo) + (yFrom - yTo) / 2) / distance;
-            ya = yTo + Rectangle.arrowSize * ((yFrom - yTo) - (xFrom - xTo) / 2) / distance;
-            xb = xTo + Rectangle.arrowSize * ((xFrom - xTo) - (yFrom - yTo) / 2) / distance;
-            yb = yTo + Rectangle.arrowSize * ((yFrom - yTo) + (xFrom - xTo) / 2) / distance;
+            xa = xTo + Size.arrowSize * ((xFrom - xTo) + (yFrom - yTo) / 2) / distance;
+            ya = yTo + Size.arrowSize * ((yFrom - yTo) - (xFrom - xTo) / 2) / distance;
+            xb = xTo + Size.arrowSize * ((xFrom - xTo) - (yFrom - yTo) / 2) / distance;
+            yb = yTo + Size.arrowSize * ((yFrom - yTo) + (xFrom - xTo) / 2) / distance;
             Adapter.graphicsOperations.drawLine(xTo, yTo, xa, ya);
             Adapter.graphicsOperations.drawLine(xTo, yTo, xb, yb);
         }

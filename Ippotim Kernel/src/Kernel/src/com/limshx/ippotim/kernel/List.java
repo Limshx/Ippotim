@@ -26,7 +26,7 @@ class List {
     }
 
     static String getListHead(List list) {
-        return list.treeNodes.get(0).rectangle.getContent();
+        return list.treeNodes.get(0).getContent();
     }
 
     static void unregisterList(List list) {
@@ -35,6 +35,8 @@ class List {
     }
 
     private void registerList(List list) {
+        Adapter.selectedList = list;
+        Adapter.selectedTreeNodeIndex = 0;
         // 子句不加入lists豪华套餐
         if (null == preList) {
             lists.add(list);
