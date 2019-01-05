@@ -263,7 +263,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (!file.exists()) {
             TextView textView = new TextView(context);
             textView.setTextColor(Color.BLACK);
-            String text = "萌新你好，欢迎进入Ippotim语言的世界！\n请你务必先大致看下我们在GitHub上的用户手册，点确定后将拉起浏览器打开该页面。\n如果你此时未联网，可以在联网后点主界面右上角的3个小白点，在弹出的菜单中选择最下面的Help菜单项，那里也有打开用户手册的入口。";
+            String text = "萌新你好，欢迎进入Ippotim语言的世界！\n\n请你务必先大致看下我们在GitHub上的用户手册，点确定后将拉起浏览器打开该页面。\n\n如果你此时未联网，可以在联网后点主界面右上角的3个小白点，在弹出的菜单中选择最下面的Help菜单项，那里也有打开用户手册的入口。";
             textView.setText(text);
             new InfoBox(null, "别点我", "点这里", textView) {
                 @Override
@@ -638,7 +638,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 String text;
                 textViews[0] = new TextView(context);
                 textViews[0].setTextColor(Color.BLACK);
-                text = "Ippotim语言是一门类C语言，语法简明易懂，适合于启蒙教学与算法演示。\nIppotim系列软件是Ippotim语言的官方IDE，借鉴了UML的图形设计思想，旨在打造一个清新优雅的图形编程平台。\nIppotim项目已在GitHub上以GPL-3.0开源，同时提供有安卓版和桌面版。笔者暂时只实现了简单的解释运行功能，后续会添加智能编程辅助功能。";
+                text = "Ippotim语言是一门类C语言，语法简明易懂，适合于启蒙教学与算法演示。\n\nIppotim系列软件是Ippotim语言的官方IDE，借鉴了UML的图形设计思想，旨在打造一个清新优雅的图形编程平台。\n\nIppotim项目已在GitHub上以GPL-3.0开源，同时提供有安卓版和桌面版。笔者暂时只实现了简单的解释运行功能，后续会添加智能编程辅助功能。\n";
                 textViews[0].setText(text);
                 textViews[1] = new TextView(context);
                 textViews[1].setTextColor(Color.BLACK);
