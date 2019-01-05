@@ -149,7 +149,6 @@ class DrawTable extends JPanel implements GraphicsOperations {
 
     @Override
     public int getPixelWidth(String s, int fontSize) {
-//        return (float) new Font("圆体", Font.PLAIN, (int) fontSize).getStringBounds(s, ((Graphics2D) g).getFontRenderContext()).getWidth();
         font = new Font("SERIF", Font.PLAIN, fontSize);
         g.setFont(font);
         return g.getFontMetrics().stringWidth(s);
@@ -213,7 +212,6 @@ class DrawTable extends JPanel implements GraphicsOperations {
         Main.setWindowCenter(jFrame);
         jFrame.setAlwaysOnTop(true);
         jFrame.setVisible(true);
-
         waitForInput();
         return input;
     }
@@ -262,7 +260,6 @@ class DrawTable extends JPanel implements GraphicsOperations {
             int x, y;
             x = e.getX();
             y = e.getY();
-
             double scale = Math.pow(1.1, e.getWheelRotation()); // 缩放倍数为1.1
             adapter.doWheelRotation(x, y, scale);
             doRepaint();

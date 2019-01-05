@@ -632,23 +632,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         menuItem[7].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                LinearLayout layout = new LinearLayout(context);
-                layout.setOrientation(LinearLayout.VERTICAL);
-                TextView[] textViews = new TextView[2];
-                String text;
-                textViews[0] = new TextView(context);
-                textViews[0].setTextColor(Color.BLACK);
-                text = "Ippotim语言是一门类C语言，语法简明易懂，适合于启蒙教学与算法演示。\n\nIppotim系列软件是Ippotim语言的官方IDE，借鉴了UML的图形设计思想，旨在打造一个清新优雅的图形编程平台。\n\nIppotim项目已在GitHub上以GPL-3.0开源，同时提供有安卓版和桌面版。笔者暂时只实现了简单的解释运行功能，后续会添加智能编程辅助功能。\n";
-                textViews[0].setText(text);
-                textViews[1] = new TextView(context);
-                textViews[1].setTextColor(Color.BLACK);
-                text = "用户手册：" + manual;
-                textViews[1].setAutoLinkMask(Linkify.ALL);
-                textViews[1].setText(text);
-                layout.addView(textViews[0]);
-                layout.addView(textViews[1]);
+                TextView textView = new TextView(context);
+                textView.setTextColor(Color.BLACK);
+                textView.setAutoLinkMask(Linkify.ALL);
+                String text = "Ippotim语言是一门类C语言，语法简明易懂，适合于启蒙教学与算法演示。\n\nIppotim系列软件是Ippotim语言的官方IDE，借鉴了UML的图形设计思想，旨在打造一个清新优雅的图形编程平台。\n\nIppotim项目已在GitHub上以GPL-3.0开源，同时提供有安卓版和桌面版。笔者暂时只实现了简单的解释运行功能，后续会添加智能编程辅助功能。\n\n用户手册：" + manual;
+                textView.setText(text);
                 ScrollView scrollView = new ScrollView(context);
-                scrollView.addView(layout);
+                scrollView.addView(textView);
                 InfoBox infoBox = new InfoBox(null, "Cancel", "OK", scrollView) {
                     @Override
                     void onNegative() {

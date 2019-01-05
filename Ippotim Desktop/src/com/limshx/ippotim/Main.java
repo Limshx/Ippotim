@@ -25,15 +25,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.LinkedList;
 
-
 class Main extends JFrame {
+    static String homeDirectory = System.getProperty("user.dir") + "/";
+    private static File openedFile;
+    private static int screenWidth, screenHeight;
+
     private Main(String s) {
         super(s);
     }
-
-    static String homeDirectory;
-    private static File openedFile;
-    private static int screenWidth, screenHeight;
 
     private static void initScreenSize() {
         screenWidth = Toolkit.getDefaultToolkit().getScreenSize().width;
@@ -63,23 +62,11 @@ class Main extends JFrame {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        homeDirectory = System.getProperty("user.dir") + "/";
-
         // macOS下菜单栏放到全局菜单栏
         if (osName.contains("Mac")) {
             System.setProperty("apple.laf.useScreenMenuBar", "true");
         }
-
-//        if (System.getProperty("os.name").contains("Win")) {
-//            homeDirectory = System.getProperty("user.dir") + "/";
-//        }
-
         DrawTable drawTable = new DrawTable();
-//        Container cont = drawRect.getContentPane();
-//        drawTable.setPreferredSize(new Dimension(drawTable.windowSize, drawTable.windowSize));
-//        JScrollPane scr1 = new JScrollPane(drawTable, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-//        cont.add(scr1);
         JMenuBar jMenuBar = new JMenuBar();
         JMenu jMenu;
         JMenuItem[] jMenuItems = new JMenuItem[7];
@@ -104,7 +91,6 @@ class Main extends JFrame {
         jMenuItems[1] = new JMenuItem("Export");
         jMenuItems[1].addActionListener(actionEvent -> {
             JFileChooser jFileChooser = new JFileChooser(homeDirectory);
-//            jFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             jFileChooser.setSelectedFile(openedFile);
             int result = jFileChooser.showOpenDialog(null);
             if (JOptionPane.YES_OPTION != result) {
@@ -300,7 +286,6 @@ class Main extends JFrame {
         }
         main.setJMenuBar(jMenuBar);
         main.add(drawTable);
-
         main.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         main.setSize(screenWidth / 2, screenWidth / 2);
         setWindowCenter(main);
