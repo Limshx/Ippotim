@@ -1,3 +1,6 @@
+## 教程
+* 看完下面的图形交互介绍后请回过头来看下我们提供的Ippotim语言的教程：
+[《The Ippotim Programming Language》](The&#32;Ippotim&#32;Programming&#32;Language.md)
 ## 主界面
 * 单指划动可以平移显示，双指开合可以整体缩放显示。
 * 单指划动可以平移显示，双指开合可以整体缩放显示。
