@@ -20,3 +20,5 @@
 * input语句如下图
 * output语句如下图
 * if语句、else语句、while语句跟C语言的类似
+## 定义和定位的游戏
+* void类型
