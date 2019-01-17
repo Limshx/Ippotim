@@ -15,8 +15,9 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.WindowConstants;
-import java.awt.FlowLayout;
 import java.awt.Toolkit;
+import java.awt.GridLayout;
+import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.WindowAdapter;
@@ -41,6 +42,10 @@ class Main extends JFrame {
 
     static void setWindowCenter(JFrame jFrame) {
         jFrame.setLocation(screenWidth / 2 - jFrame.getWidth() / 2, screenHeight / 2 - jFrame.getHeight() / 2);
+    }
+
+    private static boolean isSystemFile(String fileName) {
+        return fileName.equals("ippotim.properties") || fileName.equals("ippotim.output");
     }
 
     public static void main(String[] args) {
@@ -70,8 +75,8 @@ class Main extends JFrame {
         JMenuBar jMenuBar = new JMenuBar();
         JMenu jMenu;
         JMenuItem[] jMenuItems = new JMenuItem[7];
-        jMenu = new JMenu("File");
-        jMenuItems[0] = new JMenuItem("Import");
+        jMenu = new JMenu("项目");
+        jMenuItems[0] = new JMenuItem("导入");
         jMenuItems[0].addActionListener(actionEvent -> {
             JFileChooser jFileChooser = new JFileChooser(homeDirectory);
             jFileChooser.setSelectedFile(openedFile);
@@ -83,12 +88,12 @@ class Main extends JFrame {
             if (null != file) {
                 openedFile = file;
                 homeDirectory = openedFile.getParent() + "/";
-                drawTable.showMessage("Imported \"" + openedFile.getName() + "\"");
+                drawTable.showMessage("已导入 \"" + openedFile.getName() + "\"");
                 drawTable.adapter.getCodeFromXml(openedFile);
                 drawTable.doRepaint();
             }
         });
-        jMenuItems[1] = new JMenuItem("Export");
+        jMenuItems[1] = new JMenuItem("导出");
         jMenuItems[1].addActionListener(actionEvent -> {
             JFileChooser jFileChooser = new JFileChooser(homeDirectory);
             jFileChooser.setSelectedFile(openedFile);
@@ -98,10 +103,14 @@ class Main extends JFrame {
             }
             File file = jFileChooser.getSelectedFile();
             if (null != file) {
+                if (isSystemFile(file.getName())) {
+                    drawTable.showMessage("不能导出到系统文件！");
+                    return;
+                }
                 openedFile = file;
                 homeDirectory = openedFile.getParent() + "/";
                 if (openedFile.exists()) {
-                    result = JOptionPane.showConfirmDialog(null, "File \"" + openedFile.getName() + "\" exists, overwrite it?");
+                    result = JOptionPane.showConfirmDialog(null, "项目 \"" + openedFile.getName() + "\" 已存在，覆盖？");
                     if (JOptionPane.YES_OPTION != result) {
                         return;
                     }
@@ -109,21 +118,25 @@ class Main extends JFrame {
                 drawTable.adapter.setCodeToXml(openedFile);
             }
         });
-        jMenuItems[2] = new JMenuItem("Clear");
+        jMenuItems[2] = new JMenuItem("清空");
         jMenuItems[2].addActionListener(actionEvent -> {
-            openedFile = null;
+            int result = JOptionPane.showConfirmDialog(null, "清空工作区？");
+            if (JOptionPane.YES_OPTION != result) {
+                return;
+            }
             drawTable.adapter.clear();
             drawTable.doRepaint();
         });
-        jMenuItems[3] = new JMenuItem("Settings");
+        jMenuItems[3] = new JMenuItem("设置");
         jMenuItems[3].addActionListener(actionEvent -> {
             String[] defaultKeywords = drawTable.adapter.getDefaultKeywords();
             String[] currentKeywords = drawTable.adapter.getCurrentKeywords();
             JTextField[] jTextFields = new JTextField[currentKeywords.length];
             JFrame jFrame = new JFrame();
-            jFrame.setLayout(new FlowLayout(FlowLayout.RIGHT));
+            jFrame.setLayout(new GridLayout(currentKeywords.length + 1, 1));
             for (int i = 0; i < currentKeywords.length; i++) {
                 JPanel jPanel = new JPanel();
+                jPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
                 JLabel jLabel = new JLabel(defaultKeywords[i] + " -> ");
                 jPanel.add(jLabel);
                 jTextFields[i] = new JTextField(currentKeywords[i], 8);
@@ -131,8 +144,8 @@ class Main extends JFrame {
                 jFrame.add(jPanel);
             }
             JButton[] jButtons = new JButton[2];
-            jButtons[0] = new JButton("   OK   ");
-            jButtons[1] = new JButton("Cancel");
+            jButtons[0] = new JButton("确定");
+            jButtons[1] = new JButton("取消");
             jButtons[0].addActionListener(new AbstractAction() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
@@ -145,13 +158,13 @@ class Main extends JFrame {
                         currentKeywords[i] = keyword;
                     }
                     if (currentKeywords.length == linkedList.size()) {
-                        int result = JOptionPane.showConfirmDialog(null, "Make the keywords default?");
+                        int result = JOptionPane.showConfirmDialog(null, "将这些关键字置为默认？");
                         boolean done = drawTable.adapter.setCurrentKeywords(currentKeywords, JOptionPane.YES_OPTION == result);
                         if (!done) {
                             return;
                         }
                     } else {
-                        drawTable.showMessage("A keyword must be different from the others!");
+                        drawTable.showMessage("关键字必须互不相同！");
                         return;
                     }
                     jFrame.setVisible(false);
@@ -163,29 +176,35 @@ class Main extends JFrame {
                     jFrame.setVisible(false);
                 }
             });
-            jFrame.add(jButtons[0]);
-            jFrame.add(jButtons[1]);
-            jFrame.setSize(screenHeight / 5, (int) (screenHeight / 2.7));
+//            jFrame.add(jButtons[0]);
+//            jFrame.add(jButtons[1]);
+            // 必须放在一起，否则会两行显示。
+            JPanel jPanel = new JPanel();
+            jPanel.add(jButtons[0]);
+            jPanel.add(jButtons[1]);
+            jFrame.add(jPanel);
             setWindowCenter(jFrame);
-            jFrame.setAlwaysOnTop(true);
+//            jFrame.setAlwaysOnTop(true);
+            // 先显示再pack()就可以不设定大小了之根据内部组件自适应
             jFrame.setVisible(true);
+            jFrame.pack();
         });
         jMenu.add(jMenuItems[0]);
         jMenu.add(jMenuItems[1]);
         jMenu.add(jMenuItems[2]);
         jMenu.add(jMenuItems[3]);
         jMenuBar.add(jMenu);
-        jMenu = new JMenu("Code");
-        jMenuItems[0] = new JMenuItem("Run");
-        jMenuItems[1] = new JMenuItem("Insert");
-        jMenuItems[2] = new JMenuItem("Modify");
-        jMenuItems[3] = new JMenuItem("Copy");
-        jMenuItems[4] = new JMenuItem("Paste");
-        jMenuItems[5] = new JMenuItem("Remove");
-        jMenuItems[6] = new JMenuItem("Sort");
+        jMenu = new JMenu("代码");
+        jMenuItems[0] = new JMenuItem("运行");
+        jMenuItems[1] = new JMenuItem("插入");
+        jMenuItems[2] = new JMenuItem("修改");
+        jMenuItems[3] = new JMenuItem("复制");
+        jMenuItems[4] = new JMenuItem("粘贴");
+        jMenuItems[5] = new JMenuItem("移除");
+        jMenuItems[6] = new JMenuItem("整理");
         JScrollPane jScrollPane = new JScrollPane(drawTable.jTextArea);
         drawTable.jTextArea.setEditable(false);
-        JFrame jFrame = new JFrame("Output");
+        JFrame jFrame = new JFrame();
         jFrame.add(jScrollPane);
         jFrame.setSize(screenHeight / 2, screenHeight / 2);
         setWindowCenter(jFrame);
@@ -205,21 +224,21 @@ class Main extends JFrame {
             if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.create("Member");
             } else {
-                drawTable.showMessage("Please select a statement first!");
+                drawTable.showMessage("请先选中一条语句！");
             }
         });
         jMenuItems[2].addActionListener(actionEvent -> {
             if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.create("Modify");
             } else {
-                drawTable.showMessage("Please select a statement first!");
+                drawTable.showMessage("请先选中一条语句！");
             }
         });
         jMenuItems[3].addActionListener(actionEvent -> {
             if (drawTable.adapter.hasSelectedTreeNode()) {
                 drawTable.adapter.copy();
             } else {
-                drawTable.showMessage("Please select a statement first!");
+                drawTable.showMessage("请先选中一条语句！");
             }
         });
         jMenuItems[4].addActionListener(actionEvent -> {
@@ -227,7 +246,7 @@ class Main extends JFrame {
                 drawTable.adapter.paste();
                 drawTable.doRepaint();
             } else {
-                drawTable.showMessage("Please select a statement first!");
+                drawTable.showMessage("请先选中一条语句！");
             }
         });
         jMenuItems[5].addActionListener(actionEvent -> {
@@ -235,16 +254,16 @@ class Main extends JFrame {
                 drawTable.adapter.remove();
                 drawTable.doRepaint();
             } else {
-                drawTable.showMessage("Please select a statement first!");
+                drawTable.showMessage("请先选中一条语句！");
             }
         });
         jMenuItems[6].addActionListener(actionEvent -> {
             try {
-                int capacity = Integer.parseInt(JOptionPane.showInputDialog("Input capacity :", "0"));
+                int capacity = Integer.parseInt(JOptionPane.showInputDialog("输入容量：", "0"));
                 drawTable.adapter.sort(capacity);
                 drawTable.doRepaint();
             } catch (NumberFormatException e) {
-                drawTable.showMessage("Not an integer!");
+                drawTable.showMessage("请输入整数！");
             }
         });
         jMenu.add(jMenuItems[0]);
@@ -256,8 +275,8 @@ class Main extends JFrame {
         jMenu.add(jMenuItems[6]);
         jMenuBar.add(jMenu);
         if (osName.contains("Linux")) {
-            jMenu = new JMenu("Tools");
-            JCheckBoxMenuItem jCheckBoxMenuItem = new JCheckBoxMenuItem("Enable OpenGL");
+            jMenu = new JMenu("工具");
+            JCheckBoxMenuItem jCheckBoxMenuItem = new JCheckBoxMenuItem("启用硬件加速");
             if (opengl.exists()) {
                 jCheckBoxMenuItem.setSelected(true);
             }
@@ -267,7 +286,7 @@ class Main extends JFrame {
                     if (!opengl.exists()) {
                         try {
                             if (opengl.createNewFile()) {
-                                drawTable.showMessage("Restart to take effect!");
+                                drawTable.showMessage("重启生效！");
                             }
                         } catch (IOException e1) {
                             e1.printStackTrace();
@@ -276,7 +295,7 @@ class Main extends JFrame {
                 } else {
                     if (opengl.exists()) {
                         if (opengl.delete()) {
-                            drawTable.showMessage("Restart to take effect!");
+                            drawTable.showMessage("重启生效！");
                         }
                     }
                 }

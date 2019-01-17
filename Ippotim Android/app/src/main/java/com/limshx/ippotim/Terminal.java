@@ -10,9 +10,9 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import java.util.ArrayList;
+
+import android.webkit.WebView;
 import com.limshx.ippotim.kernel.Adapter;
 
 public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
@@ -32,14 +32,11 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
     private boolean hasSoftWrap;
     private ArrayList<StringBuilder> list; // 把输出缓冲到rawList而不进行切分处理可以彻底解放内核，解决运行瓶颈。用ArrayList<StringBuilder>而不是ArrayList<String>会省去很多麻烦。
     private long preClickTime = 0;
-    private Context context;
-    private TextView textView;
     Adapter adapter;
     InfoBox[] infoBox = new InfoBox[2];
 
-    public Terminal(Context context) {
+    Terminal(Context context) {
         super(context);
-        this.context = context;
         holder = getHolder();
         holder.addCallback(this);
         //holder.setFormat(PixelFormat.TRANSPARENT); // 顶层绘制SurfaceView设成透明
@@ -104,10 +101,6 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
         if (null != infoBox[0]) {
             infoBox[0].getAlertDialog().setTitle("0~" + getPagesCount() + " :");
         }
-
-        if (null != textView) {
-            updateTextView();
-        }
     }
 
     @Override
@@ -140,26 +133,9 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                 preY = motionEvent.getY();
                 long currentClickTime = System.currentTimeMillis();
                 if (currentClickTime - preClickTime < 300) {
-                    textView = new TextView(context);
-                    textView.setTextIsSelectable(true);
-                    // textView.setTextColor(Color.BLACK);
-                    // textView.setTypeface(Typeface.create(Typeface.SERIF, Typeface.NORMAL));
-                    // textView.setTextSize(fontSize);
-                    // 装ScrollView里可以滚得更快或者说快得多
-                    ScrollView scrollView = new ScrollView(context);
-                    scrollView.addView(textView);
-                    updateTextView();
-                    new InfoBox(null, "Cancel", "OK", scrollView) {
-                        @Override
-                        void onNegative() {
-
-                        }
-
-                        @Override
-                        void onPositive() {
-
-                        }
-                    }.showDialog();
+                    WebView webView = new WebView(getContext());
+                    webView.loadUrl("file:///" + MainActivity.homeDirectory + "ippotim.output");
+                    MainActivity.view(webView);
                 }
                 preClickTime = currentClickTime;
                 break;
@@ -195,19 +171,6 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
         }
         // 这里直接返回true就无法触发长按事件了
         return super.onTouchEvent(motionEvent);
-    }
-
-    private void updateTextView() {
-        textView.setText("");
-        StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 0; i < linesCount; i++) {
-            int focusPoint = i + index - linesCount;
-            if (focusPoint >= 0) {
-                stringBuilder.append(list.get(focusPoint));
-                stringBuilder.append("\n");
-            }
-        }
-        textView.append(stringBuilder.deleteCharAt(stringBuilder.length() - 1));
     }
 
     private void updateLinesCount() {

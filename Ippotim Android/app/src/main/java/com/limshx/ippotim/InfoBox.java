@@ -64,6 +64,7 @@ abstract class InfoBox {  // 当初这个是放在MainActivity里，想让DrawTa
                 }
             }
         };
+        // adb不设置按钮就不显示按钮了
         adb.setView(view).setTitle(title).setNegativeButton(negative, null).setPositiveButton(positive, null);
         alertDialog = adb.create();
         if (view instanceof EditText) {

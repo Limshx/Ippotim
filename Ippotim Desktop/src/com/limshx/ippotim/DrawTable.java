@@ -5,6 +5,7 @@ import com.limshx.ippotim.kernel.GraphicsOperations;
 
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -12,10 +13,12 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
@@ -24,28 +27,335 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.io.File;
+import java.util.LinkedList;
+import java.util.Set;
 
 class DrawTable extends JPanel implements GraphicsOperations {
     Adapter adapter;
     private Graphics g;
     private Font font;
+    private final int jTextFieldColumns = 10;
     JTextArea jTextArea = new JTextArea();
+
+    private void create(JFrame jFrame, String label, boolean insertOrModify) {
+        JFrame input = new JFrame();
+        input.setLayout(new GridLayout(2, 1));
+        JPanel jPanel = new JPanel();
+        jPanel.setLayout(new FlowLayout());
+        jPanel.add(new JLabel(label));
+        JTextField jTextField = new JTextField();
+        jTextField.setColumns(jTextFieldColumns);
+        jPanel.add(jTextField);
+        input.add(jPanel);
+        jPanel = new JPanel();
+        jPanel.setLayout(new FlowLayout());
+        JButton[] jButtons = new JButton[2];
+        jButtons[0] = new JButton("确定");
+        jButtons[0].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String statement = label + " " + jTextField.getText();
+                create(statement, insertOrModify);
+                input.setVisible(false);
+                jFrame.setVisible(false);
+            }
+        });
+        jButtons[1] = new JButton("取消");
+        jButtons[1].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                input.setVisible(false);
+            }
+        });
+        jPanel.add(jButtons[0]);
+        jPanel.add(jButtons[1]);
+
+        input.add(jPanel);
+        input.pack();
+        Main.setWindowCenter(input);
+        input.setVisible(true);
+    }
+
+    private void create(String statement, boolean insertOrModify) {
+        if (insertOrModify) {
+            adapter.insert(statement.trim());
+        } else {
+            adapter.modify(statement.trim());
+        }
+        doRepaint();
+    }
+
+    private void create(boolean insertOrModify) {
+        JFrame jFrame = new JFrame();
+        int length = 12;
+        jFrame.setLayout(new GridLayout(length / 2, 2));
+        JButton[] jButtons = new JButton[length];
+        jButtons[0] = new JButton("定义");
+        jButtons[0].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFrame input = new JFrame();
+                input.setLayout(new GridLayout(2, 1));
+                JPanel[] jPanels = new JPanel[2];
+
+                jPanels[0] = new JPanel();
+                jPanels[0].setLayout(new GridLayout(1, 2));
+                JComboBox<String> jComboBox = new JComboBox<>();
+                Set<String> structures = adapter.getStructures();
+                for (String structure : structures) {
+                    jComboBox.addItem(structure);
+                }
+                jPanels[0].add(jComboBox);
+                JTextField jTextField = new JTextField();
+                jTextField.setColumns(jTextFieldColumns);
+                jPanels[0].add(jTextField);
+
+                jPanels[1] = new JPanel();
+                jPanels[1].setLayout(new FlowLayout(FlowLayout.CENTER));
+                JButton[] jButtons = new JButton[2];
+                jButtons[0] = new JButton("确定");
+                jButtons[0].addActionListener(new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        String statement = jComboBox.getSelectedItem() + " " + jTextField.getText();
+                        create(statement, insertOrModify);
+                        input.setVisible(false);
+                        jFrame.setVisible(false);
+                    }
+                });
+                jButtons[1] = new JButton("取消");
+                jButtons[1].addActionListener(new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        input.setVisible(false);
+                    }
+                });
+                jPanels[1].add(jButtons[0]);
+                jPanels[1].add(jButtons[1]);
+
+                input.add(jPanels[0]);
+                input.add(jPanels[1]);
+                input.pack();
+                Main.setWindowCenter(input);
+                input.setVisible(true);
+            }
+        });
+        jButtons[1] = new JButton("赋值");
+        jButtons[1].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFrame input = new JFrame();
+                input.setLayout(new GridLayout(2, 1));
+                JPanel jPanel = new JPanel();
+                jPanel.setLayout(new FlowLayout());
+                JTextField[] jTextFields = new JTextField[2];
+                jTextFields[0] = new JTextField();
+                jTextFields[0].setColumns(jTextFieldColumns);
+                jTextFields[1] = new JTextField();
+                jTextFields[1].setColumns(jTextFieldColumns);
+                jPanel.add(jTextFields[0]);
+                jPanel.add(new JLabel("="));
+                jPanel.add(jTextFields[1]);
+                input.add(jPanel);
+                jPanel = new JPanel();
+                jPanel.setLayout(new FlowLayout());
+                JButton[] jButtons = new JButton[2];
+                jButtons[0] = new JButton("确定");
+                jButtons[0].addActionListener(new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        String statement = jTextFields[0].getText() + " = " + jTextFields[1].getText();
+                        create(statement, insertOrModify);
+                        input.setVisible(false);
+                        jFrame.setVisible(false);
+                    }
+                });
+                jButtons[1] = new JButton("取消");
+                jButtons[1].addActionListener(new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        input.setVisible(false);
+                    }
+                });
+                jPanel.add(jButtons[0]);
+                jPanel.add(jButtons[1]);
+
+                input.add(jPanel);
+                input.pack();
+                Main.setWindowCenter(input);
+                input.setVisible(true);
+            }
+        });
+        jButtons[2] = new JButton("输入");
+        jButtons[2].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                create(jFrame, adapter.getCurrentKeywords()[7], insertOrModify);
+            }
+        });
+        jButtons[3] = new JButton("输出");
+        jButtons[3].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                create(jFrame, adapter.getCurrentKeywords()[8], insertOrModify);
+            }
+        });
+        jButtons[4] = new JButton("如果");
+        jButtons[4].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                create(jFrame, adapter.getCurrentKeywords()[1], insertOrModify);
+            }
+        });
+        jButtons[5] = new JButton("否则");
+        jButtons[5].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String statement = adapter.getCurrentKeywords()[2];
+                create(statement, insertOrModify);
+                jFrame.setVisible(false);
+            }
+        });
+        jButtons[6] = new JButton("循环");
+        jButtons[6].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                create(jFrame, adapter.getCurrentKeywords()[3], insertOrModify);
+            }
+        });
+        jButtons[7] = new JButton("注释");
+        jButtons[7].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                create(jFrame, "//", insertOrModify);
+            }
+        });
+        jButtons[8] = new JButton("跳出");
+        jButtons[8].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String statement = adapter.getCurrentKeywords()[4];
+                create(statement, insertOrModify);
+                jFrame.setVisible(false);
+            }
+        });
+        jButtons[9] = new JButton("继续");
+        jButtons[9].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String statement = adapter.getCurrentKeywords()[5];
+                create(statement, insertOrModify);
+                jFrame.setVisible(false);
+            }
+        });
+        jButtons[10] = new JButton("调用");
+        jButtons[10].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFrame input = new JFrame();
+                input.setLayout(new GridLayout(2, 1));
+                JPanel[] jPanels = new JPanel[2];
+
+                jPanels[0] = new JPanel();
+                jPanels[0].setLayout(new GridLayout(1, 2));
+                JComboBox<String> jComboBox = new JComboBox<>();
+                JPanel jPanel = new JPanel();
+                jPanel.add(new JLabel("{"));
+                jPanel.add(jComboBox);
+                jPanel.add(new JLabel("}"));
+                jPanels[0].add(jPanel);
+                LinkedList<JTextField> jTextFields = new LinkedList<>();
+                jComboBox.addItemListener(e1 -> {
+                    if (null != jComboBox.getSelectedItem()) {
+                        jTextFields.clear();
+                        jPanels[0].removeAll();
+                        jPanels[0].add(jPanel);
+                        int functionParametersCount = adapter.getFunctionParametersCount(jComboBox.getSelectedItem().toString());
+                        for (int i = 0; i < functionParametersCount; i++) {
+                            JTextField jTextField = new JTextField();
+                            jTextField.setColumns(jTextFieldColumns);
+                            jPanels[0].add(jTextField);
+                            jTextFields.add(jTextField);
+                        }
+                        input.pack();
+                    }
+                });
+                Set<String> functions = adapter.getFunctions();
+                for (String function : functions) {
+                    if (!function.isEmpty()) {
+                        jComboBox.addItem(function);
+                    }
+                }
+
+                jPanels[1] = new JPanel();
+                jPanels[1].setLayout(new FlowLayout(FlowLayout.CENTER));
+                JButton[] jButtons = new JButton[2];
+                jButtons[0] = new JButton("确定");
+                jButtons[0].addActionListener(new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        StringBuilder stringBuilder = new StringBuilder("{" + jComboBox.getSelectedItem() + "}" + " ");
+                        for (JTextField jTextField : jTextFields) {
+                            stringBuilder.append(jTextField.getText()).append(" ");
+                        }
+                        String statement = stringBuilder.toString();
+                        create(statement, insertOrModify);
+                        input.setVisible(false);
+                        jFrame.setVisible(false);
+                    }
+                });
+                jButtons[1] = new JButton("取消");
+                jButtons[1].addActionListener(new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        input.setVisible(false);
+                    }
+                });
+                jPanels[1].add(jButtons[0]);
+                jPanels[1].add(jButtons[1]);
+
+                input.add(jPanels[0]);
+                input.add(jPanels[1]);
+                input.pack();
+                Main.setWindowCenter(input);
+                input.setVisible(true);
+            }
+        });
+        jButtons[11] = new JButton("返回");
+        jButtons[11].addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String statement = adapter.getCurrentKeywords()[6];
+                create(statement, insertOrModify);
+                jFrame.setVisible(false);
+            }
+        });
+        for (int i = 0; i < length; i++) {
+            jFrame.add(jButtons[i]);
+        }
+        if (!adapter.canCreateElse() || !insertOrModify) {
+            jButtons[5].setEnabled(false);
+        }
+        jFrame.pack();
+        Main.setWindowCenter(jFrame);
+        jFrame.setVisible(true);
+    }
 
     private String s;
     public void create(String type) {
         switch (type) {
             case "Function":
-                s = JOptionPane.showInputDialog("Input a function head :", s);
+                s = JOptionPane.showInputDialog("输入函数头：", s);
                 break;
             case "Structure":
-                s = JOptionPane.showInputDialog("Input a structure name :", s);
+                s = JOptionPane.showInputDialog("输入结构名：", s);
                 break;
             case "Member":
-                s = JOptionPane.showInputDialog("Input a statement :", s);
-                break;
+                create(true);
+                return;
             case "Modify":
-                s = JOptionPane.showInputDialog("Input a statement :", adapter.getRectangleContent());
-                break;
+                create(false);
+                return;
             default:
                 s = null;
                 break;
@@ -62,12 +372,6 @@ class DrawTable extends JPanel implements GraphicsOperations {
                     break;
                 case "Structure":
                     adapter.createStructure(s);
-                    break;
-                case "Member":
-                    adapter.insert(s);
-                    break;
-                case "Modify":
-                    adapter.modify(s);
                     break;
                 default:
                     break;
@@ -170,13 +474,13 @@ class DrawTable extends JPanel implements GraphicsOperations {
 
     @Override
     public Object getInput() {
-        JFrame jFrame = new JFrame("Input");
-        JLabel jLabel = new JLabel("Input a value :");
+        JFrame jFrame = new JFrame();
+        JLabel jLabel = new JLabel("输入一个值：");
         JTextField jTextField = new JTextField();
-        jTextField.setColumns(20);
+        jTextField.setColumns(jTextFieldColumns);
         JButton[] jButtons = new JButton[2];
-        jButtons[0] = new JButton(" String ");
-        jButtons[1] = new JButton("Number");
+        jButtons[0] = new JButton("字符串");
+        jButtons[1] = new JButton("整数");
         jButtons[0].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
@@ -185,7 +489,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
                     inputted = true;
                     jFrame.setVisible(false);
                 } else {
-                    showMessage("Double quotation mark is forbidden!");
+                    showMessage("禁止出现双引号！");
                 }
             }
         });
@@ -197,21 +501,26 @@ class DrawTable extends JPanel implements GraphicsOperations {
                     inputted = true;
                     jFrame.setVisible(false);
                 } catch (NumberFormatException e) {
-                    showMessage("Not an integer!");
+                    showMessage("请输入整数！");
                 }
             }
         });
-        jFrame.setLayout(new FlowLayout(FlowLayout.CENTER));
-        jFrame.add(jLabel);
-        jFrame.add(jTextField);
+        jFrame.setLayout(new GridLayout(2, 1));
         JPanel jPanel = new JPanel();
+        jPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+        jPanel.add(jLabel);
+        jPanel.add(jTextField);
+        jFrame.add(jPanel);
+        jPanel = new JPanel();
         jPanel.add(jButtons[0]);
         jPanel.add(jButtons[1]);
         jFrame.add(jPanel);
-        jFrame.setSize(250, 110);
         Main.setWindowCenter(jFrame);
-        jFrame.setAlwaysOnTop(true);
+//        jFrame.setAlwaysOnTop(true);
         jFrame.setVisible(true);
+        // 这样就不用通过添加空格统一按钮长度了，setSize()不行
+        jButtons[1].setPreferredSize(new Dimension(jButtons[0].getWidth(), jButtons[0].getHeight()));
+        jFrame.pack();
         waitForInput();
         return input;
     }

@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Properties;
+import java.util.Set;
 
 public class Adapter {
     private int x, y;
@@ -51,6 +52,22 @@ public class Adapter {
     private void setXY(int x, int y) {
         this.x = x;
         this.y = y;
+    }
+
+    public Set<String> getStructures() {
+        return structures.keySet();
+    }
+
+    public Set<String> getFunctions() {
+        return functions.keySet();
+    }
+
+    public int getFunctionParametersCount(String functionName) {
+        return functionNameToInstances.get(functionName).keySet().size();
+    }
+
+    public TreeNode getTreeNode() {
+        return selectedList.treeNodes.get(selectedTreeNodeIndex);
     }
 
     public void setScreen(int width, int height) {
@@ -83,7 +100,7 @@ public class Adapter {
     private void showDifferentKeywords() {
         for (int i = 0; i < Syntax.defaultKeywords.length; i++) {
             if (!Syntax.currentKeywords[i].equals(Syntax.defaultKeywords[i])) {
-                graphicsOperations.showMessage("The keyword \"" + Syntax.defaultKeywords[i] + "\" is now \"" + Syntax.currentKeywords[i] + "\"");
+                graphicsOperations.showMessage("关键字 \"" + Syntax.defaultKeywords[i] + "\" 现在是 \"" + Syntax.currentKeywords[i] + "\"");
             }
         }
     }
@@ -136,7 +153,7 @@ public class Adapter {
         if (null != keywords) {
             for (String keyword : keywords) {
                 if (!keyword.equals(Syntax.currentKeywords[0]) && structures.containsKey(keyword)) {
-                    graphicsOperations.showMessage("\"" + keyword + "\" has already been defined as a structure!");
+                    graphicsOperations.showMessage("\"" + keyword + "\" 已经被定义为一个结构体！");
                     return false;
                 }
             }
@@ -455,11 +472,11 @@ public class Adapter {
     private boolean isValidFunctionHead(String functionHead, boolean checkIfInUse) {
         ArrayList<String> list = Syntax.getRegularElements(functionHead);
         if (checkIfInUse && functions.containsKey(list.get(0))) {
-            graphicsOperations.showMessage("The function name is in use!");
+            graphicsOperations.showMessage("该函数名已被使用！");
             return false;
         }
         if (0 != list.size() % 2 || !list.get(1).equals(":")) {
-            graphicsOperations.showMessage("Invalid function head!");
+            graphicsOperations.showMessage("无效的函数头！");
             return false;
         }
         // 从1开始是因为第0组刚刚已经检查过了
@@ -467,13 +484,13 @@ public class Adapter {
             String element = list.get(i * 2);
             if (!structures.containsKey(element)) {
                 if (checkIfInUse) {
-                    graphicsOperations.showMessage("The structure \"" + element + "\" is not defined!");
+                    graphicsOperations.showMessage("结构体 \"" + element + "\" 未定义！");
                 }
                 return false;
             }
             element = list.get(i * 2 + 1);
             if (Syntax.isInvalidIdentifier(element)) {
-                graphicsOperations.showMessage("The identifier \"" + element + "\" is invalid!");
+                graphicsOperations.showMessage("标识符 \"" + element + "\" 是无效的！");
                 return false;
             }
         }
@@ -492,15 +509,15 @@ public class Adapter {
 
     private boolean isValidStructureName(String s) {
         if (s.contains(" ") || Syntax.isInvalidIdentifier(s)) {
-            graphicsOperations.showMessage("Invalid identifier!");
+            graphicsOperations.showMessage("无效的标识符！");
             return false;
         }
         if (Syntax.isKeyword(s)) {
-            graphicsOperations.showMessage("The identifier \"" + s + "\" is a keyword!");
+            graphicsOperations.showMessage("标识符 \"" + s + "\" 是关键字！");
             return false;
         }
         if (structures.containsKey(s)) {
-            graphicsOperations.showMessage("The structure name is in use!");
+            graphicsOperations.showMessage("该结构名已被使用！");
             return false;
         }
         return true;
@@ -516,7 +533,8 @@ public class Adapter {
         }
     }
 
-    private boolean canCreateElse(List list) {
+    public boolean canCreateElse() {
+        List list = selectedList;
         if (null != list.preList) {
             // 从1开始才是语句
             for (int i = 1; i < list.preList.treeNodes.size(); i++) {
@@ -557,7 +575,7 @@ public class Adapter {
             if (s.equals(Syntax.currentKeywords[2])) {
                 // 只有在if语句的子句里才能新建else语句
                 // else语句只能点击“+”矩形新建，不能由插入、修改来
-                return canCreateElse(selectedList) && !hasSelectedTreeNode();
+                return !hasSelectedTreeNode();
             }
             return !content.equals(Syntax.currentKeywords[2]);
         } else {
@@ -572,7 +590,7 @@ public class Adapter {
             List.currentGroupColor = selectedList.color;
             TreeNode treeNode = new TreeNode(s);
             if (null == treeNode.statementType) {
-                graphicsOperations.showMessage("Invalid statement!");
+                graphicsOperations.showMessage("无效的语句！");
                 return;
             }
             insert(index, treeNode, false);
@@ -582,7 +600,7 @@ public class Adapter {
                 treeNode.list.treeNodes.add(subTreeNode);
             }
         } else {
-            graphicsOperations.showMessage("Invalid statement!");
+            graphicsOperations.showMessage("无效的语句！");
         }
     }
 
@@ -596,7 +614,7 @@ public class Adapter {
         TreeNode t = selectedList.treeNodes.get(selectedTreeNodeIndex);
         // 特殊结点删除作特殊处理
         if (t.getContent().equals("")) { // 子句的第一个矩形不允许删除
-            graphicsOperations.showMessage("Cannot remove the statement!");
+            graphicsOperations.showMessage("无法移除该语句！");
         } else if (0 == selectedTreeNodeIndex) { // 全部删除，包括结构定义、函数定义
             if (Color.RED == selectedList.color.rectangleColor) { // 说明是结构定义
                 unregisterStructure(selectedList);
@@ -614,10 +632,6 @@ public class Adapter {
 
     public boolean hasSelectedTreeNode() {
         return -1 != selectedTreeNodeIndex;
-    }
-
-    public String getRectangleContent() {
-        return hasSelectedTreeNode() ? selectedList.treeNodes.get(selectedTreeNodeIndex).getContent() : "";
     }
 
     // 选中矩形后长按即弹出输入窗口让更新内容，如果是改了像if、else、while这样有子句者则删除子句，或者为了防止误触还是设置一个modify菜单项。本来是可以直接改的，不过改变等价于删除加添加，只是这样删除第一个矩形的时候就难了，可以在TreeNode链表再添加一个不关联矩形的头结点，只是第一个矩形其实没有删除的必要
@@ -641,7 +655,7 @@ public class Adapter {
             return; // 这个return很必要，一段时间不看都不记得当初是怎么想的怎么写上去的了
         } else {
             if (!isValidStatement(t.getContent(), s, false)) {
-                graphicsOperations.showMessage("Invalid statement!");
+                graphicsOperations.showMessage("无效的语句！");
                 return;
             }
         }
@@ -673,7 +687,7 @@ public class Adapter {
     public void copy() {
         TreeNode t = selectedList.treeNodes.get(selectedTreeNodeIndex);
         if (0 == selectedTreeNodeIndex || t.getContent().equals(Syntax.currentKeywords[2])) {
-            graphicsOperations.showMessage("Cannot copy the head of a list or else statement!");
+            graphicsOperations.showMessage("不能复制语句头或否则语句！");
             return;
         }
         copiedTreeNode = t;
@@ -688,7 +702,7 @@ public class Adapter {
             selectedTreeNodeIndex = index;
             insert(selectedTreeNodeIndex, copiedTreeNode, true);
         } else {
-            graphicsOperations.showMessage("Copy a statement first!");
+            graphicsOperations.showMessage("请先复制！");
         }
     }
 

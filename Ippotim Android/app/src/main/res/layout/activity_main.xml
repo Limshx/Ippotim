@@ -9,13 +9,9 @@
         android:fitsSystemWindows="true"
         tools:openDrawer="start">
 
-    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-                  xmlns:tools="http://schemas.android.com/tools"
-                  android:id="@+id/container"
-                  android:layout_width="match_parent"
+    <LinearLayout android:layout_width="match_parent"
                   android:layout_height="match_parent"
-                  android:orientation="vertical"
-                  tools:context="com.limshx.ippotim.MainActivity">
+                  android:orientation="vertical">
 
         <android.support.v7.widget.Toolbar
                 android:id="@+id/toolbar"

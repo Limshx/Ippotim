@@ -100,7 +100,7 @@ class Executor {
             if (null != fatherInstance.getElements()) {
                 return fatherInstance.getElements().get(instanceName);
             } else {
-                Adapter.error("NullPointerException");
+                Adapter.error("该实例不存在！");
             }
             return null;
         } else {
@@ -136,7 +136,7 @@ class Executor {
         for (String elementChain : elementChains) {
             instance = getElementInstance(instances, instance, elementChain);
             if (null == instance) {
-                Adapter.error("No such instance!");
+                Adapter.error("该实例不存在！");
                 return null;
             }
         }
@@ -154,7 +154,7 @@ class Executor {
             Adapter.selectedTreeNodeIndex = index;
             if (null == statement.statementType) {
                 Syntax.updateStatementType(statement);
-                Adapter.error("Invalid statement!");
+                Adapter.error("无效的语句！");
             }
             switch (statement.statementType) {
                 case DEFINE: {
@@ -191,7 +191,7 @@ class Executor {
                             if (null != value) {
                                 stringBuilder.append(value);
                             } else {
-                                Adapter.error("Only instances of \"" + Syntax.currentKeywords[0] + "\" can be outputted!");
+                                Adapter.error("只有 \"" + Syntax.currentKeywords[0] + "\" 的实例才能被输出！");
                             }
                         }
                     } else {
@@ -275,7 +275,7 @@ class Executor {
                 if (to.type.equals(Syntax.currentKeywords[0])) {
                     to.type = from.type;
                 } else {
-                    Adapter.error("Invalid assignment!");
+                    Adapter.error("无效的赋值！");
                     return;
                 }
             }
@@ -639,7 +639,7 @@ class Executor {
                         if (Syntax.currentKeywords[0].equals(instance.type)) {
                             return (Integer) getValue(instance);
                         }
-                        Adapter.error("\"" + instanceName + "\" is not an instance of \"" + Syntax.currentKeywords[0] + "\"!");
+                        Adapter.error("\"" + instanceName + "\" 不是一个 \"" + Syntax.currentKeywords[0] + "\" 的实例！");
                     }
                 }
             }

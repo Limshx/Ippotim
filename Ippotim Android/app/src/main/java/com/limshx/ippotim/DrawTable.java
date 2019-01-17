@@ -1,5 +1,6 @@
 package com.limshx.ippotim;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -10,12 +11,24 @@ import android.util.DisplayMetrics;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.Spinner;
+import android.widget.TableLayout;
+import android.widget.TableRow;
+import android.widget.TextView;
 import android.widget.Toast;
 import com.limshx.ippotim.kernel.Adapter;
 import com.limshx.ippotim.kernel.GraphicsOperations;
 
 import java.io.File;
+import java.util.LinkedList;
+import java.util.Set;
 
 public class DrawTable extends View implements GraphicsOperations {
     DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -162,6 +175,294 @@ public class DrawTable extends View implements GraphicsOperations {
         return Math.sqrt((1280 * 720d) / (displayMetrics.widthPixels * displayMetrics.heightPixels));
     }
 
+    private Button elseButton;
+
+    private TableRow getRow(String left, OnClickListener leftEvent, String right, OnClickListener rightEvent) {
+        TableRow row = new TableRow(context);
+        Button[] buttons = new Button[2];
+        buttons[0] = new Button(context);
+        buttons[1] = new Button(context);
+        buttons[0].setText(left);
+        buttons[0].setOnClickListener(leftEvent);
+        if (right.equals("否则")) {
+            elseButton = buttons[1];
+        }
+        buttons[1].setText(right);
+        buttons[1].setOnClickListener(rightEvent);
+        row.addView(buttons[0]);
+        row.addView(buttons[1]);
+        return row;
+    }
+
+    private void update(AlertDialog alertDialog, String statement, boolean insertOrModify) {
+        alertDialog.cancel();
+        if (insertOrModify) {
+            adapter.insert(statement.trim());
+        } else {
+            adapter.modify(statement.trim());
+        }
+        doRepaint();
+    }
+
+    // infoBox.showDialog()后linearLayout.removeAllViews()再添加虽然可以不创建新的对话框直接刷新当前对话框，但点输入框无法弹出软键盘。可能进行某些设置可以恢复正常，但网上找了很久都无果或者说未果，故先这样处理，日后有更好的解决方案再说。
+    private boolean isFirst = true; // 放到函数内的话因为内部类要用到，得是final，但final的话内部类就不能改动其值了只能调用，作为全局变量即可。
+    private AlertDialog preDialog;
+    private LinearLayout linearLayout;
+    private void showFunctionCallDialog(final AlertDialog alertDialog, final Spinner spinner, final boolean insertOrModify) {
+        if (null != preDialog) {
+            preDialog.cancel();
+            linearLayout.removeAllViews();
+        }
+        final LinkedList<EditText> editTexts = new LinkedList<>();
+        linearLayout = new LinearLayout(context);
+        TextView textView = new TextView(context);
+        textView.setText("{");
+        linearLayout.addView(textView);
+        linearLayout.addView(spinner);
+        textView = new TextView(context);
+        textView.setText("}");
+        linearLayout.addView(textView);
+        String data = (String) spinner.getSelectedItem();
+        int functionParametersCount = adapter.getFunctionParametersCount(data);
+        for (int i = 0; i < functionParametersCount; i++) {
+            EditText editText = new EditText(context);
+            editText.setSingleLine();
+            editText.setSelectAllOnFocus(true);
+            linearLayout.addView(editText);
+            editTexts.add(editText);
+        }
+        HorizontalScrollView horizontalScrollView = new HorizontalScrollView(context);
+        horizontalScrollView.addView(linearLayout);
+        InfoBox infoBox = new InfoBox(null, "取消", "确定", horizontalScrollView) {
+            @Override
+            void onNegative() {
+
+            }
+
+            @Override
+            void onPositive() {
+                StringBuilder stringBuilder = new StringBuilder("{" + spinner.getSelectedItem() + "}" + " ");
+                for (EditText editText : editTexts) {
+                    String parameter = editText.getText().toString().trim();
+                    if (parameter.isEmpty()) {
+                        showMessage("请补全参数！");
+                        editText.requestFocus();
+                        return;
+                    }
+                    stringBuilder.append(parameter).append(" ");
+                }
+                getAlertDialog().cancel();
+                String statement = stringBuilder.toString();
+                update(alertDialog, statement, insertOrModify);
+            }
+        };
+        infoBox.showDialog(true, false);
+        preDialog = infoBox.getAlertDialog();
+    }
+
+    private void create(final AlertDialog alertDialog, final String label, final boolean insertOrModify) {
+        LinearLayout linearLayout = new LinearLayout(context);
+        linearLayout.setOrientation(LinearLayout.HORIZONTAL);
+        TextView textView = new TextView(context);
+        textView.setText(label);
+        linearLayout.addView(textView);
+        final EditText editText = new EditText(context);
+        linearLayout.addView(editText);
+        new InfoBox(null, "取消", "确定", linearLayout) {
+            @Override
+            void onNegative() {
+
+            }
+
+            @Override
+            void onPositive() {
+                String statement = label + " " + editText.getText();
+                update(alertDialog, statement, insertOrModify);
+            }
+        }.showDialog();
+    }
+
+    private void create(final boolean insertOrModify) {
+        TableLayout rows = new TableLayout(context);
+        AlertDialog.Builder adb = new AlertDialog.Builder(context);
+        ScrollView scrollView = new ScrollView(context);
+        scrollView.addView(rows);
+        adb.setView(scrollView);
+        final AlertDialog alertDialog = adb.create();
+        rows.setStretchAllColumns(true);
+        rows.addView(getRow("定义", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Set<String> structures = adapter.getStructures();
+                ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item);
+                for (String structure : structures) {
+                    arrayAdapter.add(structure);
+                }
+                final Spinner spinner = new Spinner(context);
+                spinner.setAdapter(arrayAdapter);
+//                Dialog dialog = new Dialog(context);
+//                dialog.setContentView(spinner);
+//                dialog.show();
+                LinearLayout linearLayout = new LinearLayout(context);
+                linearLayout.setOrientation(LinearLayout.HORIZONTAL);
+                linearLayout.addView(spinner);
+                final EditText editText = new EditText(context);
+                linearLayout.addView(editText);
+                HorizontalScrollView horizontalScrollView = new HorizontalScrollView(context);
+                horizontalScrollView.addView(linearLayout);
+                new InfoBox(null, "取消", "确定", horizontalScrollView) {
+                    @Override
+                    void onNegative() {
+
+                    }
+
+                    @Override
+                    void onPositive() {
+                        String statement = spinner.getSelectedItem() + " " + editText.getText();
+                        update(alertDialog, statement, insertOrModify);
+                    }
+                }.showDialog();
+            }
+        }, "赋值", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                LinearLayout linearLayout = new LinearLayout(context);
+                linearLayout.setOrientation(LinearLayout.HORIZONTAL);
+                final EditText[] editTexts = new EditText[2];
+                editTexts[0] = new EditText(context);
+                editTexts[1] = new EditText(context);
+                linearLayout.addView(editTexts[0]);
+                TextView textView = new TextView(context);
+                textView.setText("=");
+                linearLayout.addView(textView);
+                linearLayout.addView(editTexts[1]);
+                new InfoBox(null, "取消", "确定", linearLayout) {
+                    @Override
+                    void onNegative() {
+
+                    }
+
+                    @Override
+                    void onPositive() {
+                        String statement = editTexts[0].getText() + " = " + editTexts[1].getText();
+                        update(alertDialog, statement, insertOrModify);
+                    }
+                }.showDialog();
+            }
+        }));
+        rows.addView(getRow("输入", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                create(alertDialog, adapter.getCurrentKeywords()[7], insertOrModify);
+            }
+        }, "输出", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                create(alertDialog, adapter.getCurrentKeywords()[8], insertOrModify);
+            }
+        }));
+        rows.addView(getRow("如果", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                create(alertDialog, adapter.getCurrentKeywords()[1], insertOrModify);
+            }
+        }, "否则", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String statement = adapter.getCurrentKeywords()[2];
+                update(alertDialog, statement, insertOrModify);
+            }
+        }));
+        rows.addView(getRow("循环", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                create(alertDialog, adapter.getCurrentKeywords()[3], insertOrModify);
+            }
+        }, "注释", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                create(alertDialog, "//", insertOrModify);
+            }
+        }));
+        rows.addView(getRow("跳出", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String statement = adapter.getCurrentKeywords()[4];
+                update(alertDialog, statement, insertOrModify);
+            }
+        }, "继续", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String statement = adapter.getCurrentKeywords()[5];
+                update(alertDialog, statement, insertOrModify);
+            }
+        }));
+        rows.addView(getRow("调用", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Set<String> functions = adapter.getFunctions();
+                if (1 == functions.size()) {
+                    showMessage("请先定义函数！");
+                    return;
+                }
+                ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item);
+                for (String function : functions) {
+                    if (!function.isEmpty()) {
+                        arrayAdapter.add(function);
+                    }
+                }
+                final Spinner spinner = new Spinner(context);
+                spinner.setAdapter(arrayAdapter);
+                showFunctionCallDialog(alertDialog, spinner, insertOrModify);
+                spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                    @Override
+                    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                        // Spinner显示时默认选中第1个或者说第0个，判断一下是否第一次选中解决重启对话框导致的闪烁问题。
+                        if (!isFirst) {
+                            showFunctionCallDialog(alertDialog, spinner, insertOrModify);
+                        } else {
+                            isFirst = false;
+                        }
+                    }
+
+                    @Override
+                    public void onNothingSelected(AdapterView<?> parent) {
+
+                    }
+
+                });
+            }
+        }, "返回", new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String statement = adapter.getCurrentKeywords()[6];
+                update(alertDialog, statement, insertOrModify);
+            }
+        }));
+//        final String[] items = {"定义", "赋值", "输入", "输出", "如果", "否则", "循环", "跳出", "继续", "调用", "返回", "注释"};
+//        adb.setItems(items, new DialogInterface.OnClickListener() {
+//            @Override
+//            public void onClick(DialogInterface dialog, int which) {
+//                showMessage(items[which]);
+//            }
+//        });
+//        alertDialog.setOnShowListener(new DialogInterface.OnShowListener() {
+//            @Override
+//            public void onShow(DialogInterface dialogInterface) {
+//                Window window = alertDialog.getWindow();
+//                if (null != window) {
+//                    WindowManager.LayoutParams params = window.getAttributes();
+//                    params.width = tableRow.getWidth();
+//                    alertDialog.getWindow().setAttributes(params);
+//                }
+//            }
+//        });
+        if (!adapter.canCreateElse() || !insertOrModify) {
+            elseButton.setEnabled(false);
+        }
+        alertDialog.show();
+    }
+
     private String text;
 
     @Override
@@ -169,21 +470,23 @@ public class DrawTable extends View implements GraphicsOperations {
         String title;
         switch (type) {
             case "Function":
-                title = "Input a function head :";
+                title = "输入函数头：";
                 break;
             case "Structure":
-                title = "Input a structure name :";
+                title = "输入结构名：";
                 break;
-            case "Member": // 一起判断
+            case "Member":
+                create(true);
+                return;
             case "Modify":
-                title = "Input a statement :";
-                break;
+                create(false);
+                return;
             default:
                 title = null;
                 break;
         }
         final EditText editText = new EditText(context);
-        InfoBox infoBox = new InfoBox(title, "Cancel", "OK", editText) {
+        InfoBox infoBox = new InfoBox(title, "取消", "确定", editText) {
             @Override
             void onNegative() {
             }
@@ -201,11 +504,6 @@ public class DrawTable extends View implements GraphicsOperations {
                         case "Structure":
                             adapter.createStructure(text);
                             break;
-                        case "Member":
-                            adapter.insert(text);
-                            break;
-                        case "Modify":
-                            adapter.modify(text);
                         default:
                             break;
                     }
@@ -214,11 +512,11 @@ public class DrawTable extends View implements GraphicsOperations {
             }
         };
         infoBox.showDialog();
-        if (type.equals("Modify")) {
-            editText.setText(adapter.getRectangleContent());
-        } else {
-            editText.setText(text);
-        }
+//        if (type.equals("Modify")) {
+//            editText.setText(adapter.getTreeNode());
+//        } else {
+//            editText.setText(text);
+//        }
     }
 
     @Override
@@ -306,7 +604,7 @@ public class DrawTable extends View implements GraphicsOperations {
             @Override
             public void run() {
                 final EditText editText = new EditText(context);
-                terminal.infoBox[1] = new InfoBox("Input a value :", "String", "Number", editText) {
+                terminal.infoBox[1] = new InfoBox("输入一个值：", "字符串", "整数", editText) {
                     @Override
                     void onNegative() {
                         input = editText.getText().toString();
@@ -314,9 +612,10 @@ public class DrawTable extends View implements GraphicsOperations {
                             inputted = true;
                             getAlertDialog().cancel();
                         } else {
-                            showMessage("Double quotation mark is forbidden!");
+                            showMessage("禁止出现双引号！");
                         }
                     }
+
                     @Override
                     void onPositive() {
                         try {
@@ -324,7 +623,7 @@ public class DrawTable extends View implements GraphicsOperations {
                             inputted = true;
                             getAlertDialog().cancel();
                         } catch (NumberFormatException e) {
-                            showMessage("Not an integer!");
+                            showMessage("请输入整数！");
                         }
                     }
                 };

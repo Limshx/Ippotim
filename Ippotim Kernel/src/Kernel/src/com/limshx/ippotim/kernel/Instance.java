@@ -67,18 +67,18 @@ class Instance {
 
     private static void putInstance(HashMap<String, Instance> instances, String type, String name) {
         if (!Adapter.structures.containsKey(type)) {
-            Adapter.error("The structure \"" + type + "\" is not defined!");
+            Adapter.error("结构体 \"" + type + "\" 未定义！");
             return;
         }
         if (Syntax.isInvalidIdentifier(name)) {
-            Adapter.error("The identifier \"" + name + "\" is invalid!");
+            Adapter.error("标识符 \"" + name + "\" 是无效的！");
             return;
         }
         if (!instances.containsKey(name)) {
             Instance instance = new Instance(type);
             instances.put(name, instance);
         } else {
-            Adapter.error("\"" + name + "\" " + "is already defined!");
+            Adapter.error("实例名 \"" + name + "\" " + "已被使用！");
         }
     }
 

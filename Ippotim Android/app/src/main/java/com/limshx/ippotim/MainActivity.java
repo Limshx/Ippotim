@@ -4,11 +4,9 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -24,8 +22,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.WebView;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -40,14 +40,33 @@ import java.util.LinkedList;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
+    static final String homeDirectory = "/storage/emulated/0/Ippotim/";
     private Context context; // View里的Context就是Activity里的this，所以不用从View里静态过来用
+    private DrawerLayout drawer;
     private DrawTable drawTable;
+    private String manual = "https://github.com/Limshx/Ippotim/blob/master/Docs/manual/README.md";
+    private String[] demos = {"招牌菜", "基础篇 输入输出", "基础篇 条件语句", "基础篇 循环语句", "基础篇 复合布尔表达式", "基础篇 字符串遍历", "基础篇 函数", "基础篇 结构体", "基础篇 嵌套结构体", "基础篇 中文和表情标识符", "基础篇 取余运算", "基础篇 数组", "基础篇 广义数组", "基础篇 综合", "进阶篇 数组", "进阶篇 广义数组", "进阶篇 函数", "进阶篇 递归函数", "进阶篇 局部变量", "进阶篇 链表", "进阶篇 栈", "高级篇 使用头结点的栈", "高级篇 出队后回收利用结点的队列", "高级篇 队列的栈", "高级篇 空类型链表", "高级篇 螺旋三角问题递归", "高级篇 螺旋三角问题非递归"};
+    private int selectedItem;
+
+    // 这是按需锁方向的标准代码
+//    void setOrientation(boolean lock) {
+//        if (lock) {
+//            setRequestedOrientation(getResources().getConfiguration().orientation % 2);
+//        } else {
+//            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+//        }
+//    }
+    private String[] items;
+    private File openedFile;
+    private Terminal terminal;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         context = this;
+        drawTable = findViewById(R.id.paint_board);
+        getWindowManager().getDefaultDisplay().getRealMetrics(drawTable.displayMetrics);
         InfoBox.adb = new AlertDialog.Builder(context);
         InfoBox.inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         // API level 23以上需要申请权限
@@ -55,18 +74,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
         } else {
             if (initDirectoryFailed()) {
-                drawTable.showMessage("Create path failed!");
+                drawTable.showMessage("创建主目录失败！");
             }
         }
-
-        drawTable = findViewById(R.id.paint_board);
-        getWindowManager().getDefaultDisplay().getRealMetrics(drawTable.displayMetrics);
-
         Toolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setTitleTextColor(Color.WHITE);
         setSupportActionBar(toolbar);
 
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+        drawer = findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.addDrawerListener(toggle);
@@ -99,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (0 == requestCode) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (initDirectoryFailed()) {
-                    drawTable.showMessage("Create path failed!");
+                    drawTable.showMessage("创建主目录失败！");
                 }
             } else {
                 System.exit(0);
@@ -117,19 +132,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             moveTaskToBack(false);
         }
     }
-
-    // 这是按需锁方向的标准代码
-//    void setOrientation(boolean lock) {
-//        if (lock) {
-//            setRequestedOrientation(getResources().getConfiguration().orientation % 2);
-//        } else {
-//            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-//        }
-//    }
-
-    private String manual = "https://github.com/Limshx/Ippotim/blob/master/Docs/manual.md";
-
-    private String[] demos = {"招牌菜", "基础篇 输入输出", "基础篇 条件语句", "基础篇 循环语句", "基础篇 复合布尔表达式", "基础篇 字符串遍历", "基础篇 结构体", "基础篇 嵌套结构体", "基础篇 函数", "基础篇 中文和表情标识符", "基础篇 取余运算", "基础篇 数组", "基础篇 广义数组", "基础篇 综合", "进阶篇 数组", "进阶篇 广义数组", "进阶篇 函数", "进阶篇 递归函数", "进阶篇 局部变量", "进阶篇 链表", "进阶篇 栈", "高级篇 使用头结点的栈", "高级篇 出队后回收利用结点的队列", "高级篇 队列的栈", "高级篇 空类型链表", "高级篇 螺旋三角问题递归", "高级篇 螺旋三角问题非递归"};
 
     private boolean download(String fileName) {
         try {
@@ -156,7 +158,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             drawTable.post(new Runnable() {
                 @Override
                 public void run() {
-                    drawTable.showMessage("Can not connect to GitHub!");
+                    drawTable.showMessage("无法连接到GitHub！");
                 }
             });
             return false;
@@ -164,8 +166,70 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
 
+    private String getProgressBarInfoBoxTitle(int progress) {
+        return "正在下载演示项目：" + progress + "/" + demos.length;
+    }
+
+    private void waitForDownloading() {
+        drawTable.showMessage("等下哦亲，演示项目马上下载完了！");
+    }
+
+    private void download() {
+        final ProgressBar progressBar = new ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setMax(demos.length);
+        final InfoBox infoBox = new InfoBox(getProgressBarInfoBoxTitle(0), "取消", "确定", progressBar) {
+            @Override
+            void onNegative() {
+                waitForDownloading();
+            }
+
+            @Override
+            void onPositive() {
+                waitForDownloading();
+            }
+        };
+        infoBox.showDialog(false, false);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final AlertDialog alertDialog = infoBox.getAlertDialog();
+                for (String demo : demos) {
+                    if (!download(demo)) {
+                        alertDialog.cancel();
+                        return;
+                    } else {
+                        progressBar.incrementProgressBy(1);
+                        drawTable.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                alertDialog.setTitle(getProgressBarInfoBoxTitle(progressBar.getProgress()));
+                            }
+                        });
+                    }
+                }
+                alertDialog.cancel();
+                drawTable.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        new InfoBox("演示项目已下载完成，导入运行试试吧！", "取消", "确定", null) {
+                            @Override
+                            void onNegative() {
+                                drawer.openDrawer(GravityCompat.START);
+                            }
+
+                            @Override
+                            void onPositive() {
+                                drawer.openDrawer(GravityCompat.START);
+                            }
+                        }.showDialog();
+                    }
+                });
+            }
+        }).start();
+    }
+
     private void downloadDemos() {
-        new InfoBox("There are no projects. Download demos?", "Cancel", "OK", null) {
+        new InfoBox("当前没有任何项目，下载演示项目？", "取消", "确定", null) {
             @Override
             void onNegative() {
 
@@ -173,145 +237,44 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             @Override
             void onPositive() {
-                drawTable.showMessage("Downloading demos...");
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (String demo : demos) {
-                            if (!download(demo)) {
-                                return;
-                            }
-                        }
-                        drawTable.showMessage("Downloaded demos.");
-                    }
-                }).start();
+                download();
             }
         }.showDialog();
     }
-
-    private int selectedItem;
-    private String[] items;
 
     private boolean isSystemFile(String fileName) {
         return fileName.equals("ippotim.properties") || fileName.equals("ippotim.output");
     }
 
-    abstract class FileOperation {
-        abstract void operateFile();
-
-        void selectFile() {
-            File[] files = new File(homeDirectory).listFiles();
-            LinkedList<String> list = new LinkedList<>();
-            for (File file : files) {
-                String name = file.getName();
-                if (!isSystemFile(name)) {
-                    list.add(name);
-                }
-            }
-            if (0 == list.size()) {
-                downloadDemos();
-                return;
-            }
-            items = new String[list.size()];
-            list.toArray(items);
-            selectedItem = null == openedFile ? 0 : list.indexOf(openedFile.getName());
-            InfoBox infoBox = new InfoBox(null, "Cancel", "OK", null) {
-                @Override
-                void onNegative() {
-
-                }
-
-                @Override
-                void onPositive() {
-                    openedFile = new File(homeDirectory + items[selectedItem]);
-                    new InfoBox("Import \"" + openedFile.getName() + "\" ?", "Cancel", "OK", null) {
-                        @Override
-                        void onNegative() {
-
-                        }
-
-                        @Override
-                        void onPositive() {
-                            operateFile();
-                        }
-                    }.showDialog();
-                }
-            };
-            infoBox.getAdb().setSingleChoiceItems(items, selectedItem, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    selectedItem = i;
-                }
-            });
-            infoBox.showDialog();
-        }
-    }
-
-    private File openedFile;
-    static final String homeDirectory = "/storage/emulated/0/Ippotim/";
-
-    private void viewManual() {
-        Uri uri = Uri.parse(manual);
-        Intent intent = new Intent();
-        intent.setAction("android.intent.action.VIEW");
-        intent.setData(uri);
-        startActivity(intent);
-    }
-
     private boolean initDirectoryFailed() {
         File file = new File(homeDirectory);
         if (!file.exists()) {
-            TextView textView = new TextView(context);
-            textView.setTextColor(Color.BLACK);
-            String text = "萌新你好，欢迎进入Ippotim语言的世界！\n\n请你务必先大致看下我们在GitHub上的用户手册，点确定后将拉起浏览器打开该页面。\n\n如果你此时未联网，可以在联网后点主界面右上角的3个小白点，在弹出的菜单中选择最下面的Help菜单项，那里也有打开用户手册的入口。";
-            textView.setText(text);
-            new InfoBox(null, "别点我", "点这里", textView) {
-                @Override
-                void onNegative() {
-                    drawTable.showMessage("点我旁边那货！");
-                }
-
-                @Override
-                void onPositive() {
-                    viewManual();
-                    new InfoBox("要记得先看手册哦亲！", "好哒", "看过啦", null) {
-                        @Override
-                        void onNegative() {
-
-                        }
-
-                        @Override
-                        void onPositive() {
-
-                        }
-                    }.showDialog();
-                }
-            }.showDialog(false, true);
-            return !file.mkdir();
+            if (file.mkdir()) {
+                download();
+            }
         }
         return false;
     }
 
     private void importFromFile() {
         if (drawTable.adapter.getCodeFromXml(openedFile)) {
-            drawTable.showMessage("Imported \"" + openedFile.getName() + "\"");
+            drawTable.showMessage("已导入 \"" + openedFile.getName() + "\"");
         }
     }
 
     private void exportToFile() {
         if (drawTable.adapter.setCodeToXml(openedFile)) {
-            drawTable.showMessage("Exported \"" + openedFile.getName() + "\"");
+            drawTable.showMessage("已导出 \"" + openedFile.getName() + "\"");
         }
     }
 
     private void deleteFile() {
         if (openedFile.delete()) {
-            drawTable.showMessage("Deleted \"" + openedFile.getName() + "\"");
+            drawTable.showMessage("已删除 \"" + openedFile.getName() + "\"");
         }
     }
 
     private void clear() {
-        openedFile = null;
         drawTable.adapter.clear();
         drawTable.doRepaint();
     }
@@ -332,7 +295,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 break;
             case R.id.Export:
                 final EditText editText = new EditText(context);
-                InfoBox infoBox = new InfoBox("Input a file name :", "Cancel", "OK", editText) {
+                InfoBox infoBox = new InfoBox("输入项目名：", "取消", "确定", editText) {
                     @Override
                     void onNegative() {
 
@@ -343,12 +306,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         String fileName = editText.getText().toString();
                         if (!fileName.equals("")) {
                             if (isSystemFile(fileName)) {
-                                drawTable.showMessage("Can not export to a system file!");
+                                drawTable.showMessage("不能导出到系统文件！");
                                 return;
                             }
                             openedFile = new File(homeDirectory + fileName);
                             if (openedFile.exists()) {
-                                new InfoBox("File \"" + openedFile.getName() + "\" exists, overwrite it?", "Cancel", "OK", null) {
+                                new InfoBox("项目 \"" + openedFile.getName() + "\" 已存在，覆盖？", "取消", "确定", null) {
                                     @Override
                                     void onNegative() {
 
@@ -363,7 +326,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                 exportToFile();
                             }
                         } else {
-                            drawTable.showMessage("The name of file can not be empty!");
+                            drawTable.showMessage("项目名不能为空！");
                         }
                     }
                 };
@@ -373,7 +336,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
                 break;
             case R.id.Clear:
-                new InfoBox("Close current project without saving?", "Cancel", "OK", null) {
+                new InfoBox("清空工作区？", "取消", "确定", null) {
                     @Override
                     void onNegative() {
 
@@ -387,7 +350,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 break;
             case R.id.Delete:
                 if (null != openedFile) {
-                    new InfoBox("Delete \"" + openedFile.getName() + "\" ?", "Cancel", "OK", null) {
+                    new InfoBox("删除 \"" + openedFile.getName() + "\" ？", "取消", "确定", null) {
                         @Override
                         void onNegative() {
 
@@ -401,7 +364,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         }
                     }.showDialog();
                 } else {
-                    drawTable.showMessage("Please import a project first!");
+                    drawTable.showMessage("请先导入项目！");
                 }
                 break;
             case R.id.Settings:
@@ -431,7 +394,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 //                LinearLayout linearLayout = findViewById(R.id.keywords);
 //                View view = layoutInflater.inflate(R.layout.keywords, linearLayout);
                 // 原来Layout可以直接当View用
-                new InfoBox(null, "Cancel", "OK", scrollView) {
+                new InfoBox(null, "取消", "确定", scrollView) {
                     @Override
                     void onNegative() {
 
@@ -449,7 +412,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         }
                         if (currentKeywords.length == linkedList.size()) {
                             final AlertDialog alertDialog = getAlertDialog();
-                            new InfoBox("Make the keywords default?", "Cancel", "OK", null) {
+                            new InfoBox("将这些关键字置为默认？", "取消", "确定", null) {
                                 @Override
                                 void onNegative() {
                                     if (drawTable.adapter.setCurrentKeywords(currentKeywords, false)) {
@@ -465,7 +428,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                 }
                             }.showDialog();
                         } else {
-                            drawTable.showMessage("A keyword must be different from the others!");
+                            drawTable.showMessage("关键字必须互不相同！");
                         }
                     }
                 }.showDialog(true, false);
@@ -479,14 +442,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
 
-    private Terminal terminal;
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
         MenuItem[] menuItem = new MenuItem[8];
 
-        menuItem[0] = menu.add(0, 0, 0, "Run");
+        menuItem[0] = menu.add(0, 0, 0, "运行");
         menuItem[0].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
@@ -494,7 +455,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 terminal = new Terminal(context);
                 terminal.adapter = drawTable.adapter;
                 drawTable.terminal = terminal;
-                InfoBox infoBox = new InfoBox(null, "Jump", "OK", terminal) {
+                InfoBox infoBox = new InfoBox(null, "跳转", "确定", terminal) {
                     @Override
                     void onPositive() {
                     }
@@ -502,12 +463,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     @Override
                     void onNegative() {
                         if (terminal.running) {
-                            drawTable.showMessage("Please wait for the program to finish.");
+                            drawTable.showMessage("请等待程序运行结束！");
                             return;
                         }
 
                         final EditText editText = new EditText(context);
-                        terminal.infoBox[0] = new InfoBox("0~" + terminal.getPagesCount() + " :", "Cancel", "OK", editText) {
+                        terminal.infoBox[0] = new InfoBox("0~" + terminal.getPagesCount() + "：", "取消", "确定", editText) {
                             @Override
                             void onNegative() {
 
@@ -519,7 +480,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                     terminal.jumpToPage(Integer.parseInt(editText.getText().toString()));
                                     getAlertDialog().cancel();
                                 } catch (NumberFormatException e) {
-                                    drawTable.showMessage("Not an integer!");
+                                    drawTable.showMessage("请输入整数！");
                                 }
                             }
                         };
@@ -532,46 +493,46 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         });
 
-        menuItem[1] = menu.add(0, 0, 0, "Insert");
+        menuItem[1] = menu.add(0, 0, 0, "插入");
         menuItem[1].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 if (drawTable.adapter.hasSelectedTreeNode()) {
                     drawTable.create("Member");
                 } else {
-                    drawTable.showMessage("Please select a statement first!");
+                    drawTable.showMessage("请先选中一条语句！");
                 }
                 return true;
             }
         });
 
-        menuItem[2] = menu.add(0, 0, 0, "Modify");
+        menuItem[2] = menu.add(0, 0, 0, "修改");
         menuItem[2].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 if (drawTable.adapter.hasSelectedTreeNode()) {
                     drawTable.create("Modify");
                 } else {
-                    drawTable.showMessage("Please select a statement first!");
+                    drawTable.showMessage("请先选中一条语句！");
                 }
                 return true;
             }
         });
 
-        menuItem[3] = menu.add(0, 0, 0, "Copy");
+        menuItem[3] = menu.add(0, 0, 0, "复制");
         menuItem[3].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 if (drawTable.adapter.hasSelectedTreeNode()) {
                     drawTable.adapter.copy();
                 } else {
-                    drawTable.showMessage("Please select a statement first!");
+                    drawTable.showMessage("请先选中一条语句！");
                 }
                 return true;
             }
         });
 
-        menuItem[4] = menu.add(0, 0, 0, "Paste");
+        menuItem[4] = menu.add(0, 0, 0, "粘贴");
         menuItem[4].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
@@ -579,13 +540,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     drawTable.adapter.paste();
                     drawTable.doRepaint();
                 } else {
-                    drawTable.showMessage("Please select a statement first!");
+                    drawTable.showMessage("请先选中一条语句！");
                 }
                 return true;
             }
         });
 
-        menuItem[5] = menu.add(0, 0, 0, "Remove");
+        menuItem[5] = menu.add(0, 0, 0, "移除");
         menuItem[5].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
@@ -593,18 +554,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     drawTable.adapter.remove();
                     drawTable.doRepaint();
                 } else {
-                    drawTable.showMessage("Please select a statement first!");
+                    drawTable.showMessage("请先选中一条语句！");
                 }
                 return true;
             }
         });
 
-        menuItem[6] = menu.add(0, 0, 0, "Sort");
+        menuItem[6] = menu.add(0, 0, 0, "整理");
         menuItem[6].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 final EditText editText = new EditText(context);
-                InfoBox infoBox = new InfoBox("Input capacity :", "Cancel", "OK", editText) {
+                InfoBox infoBox = new InfoBox("输入容量：", "取消", "确定", editText) {
                     @Override
                     void onNegative() {
 
@@ -618,7 +579,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             drawTable.adapter.sort(capacity);
                             drawTable.doRepaint();
                         } catch (NumberFormatException e) {
-                            drawTable.showMessage("Not an integer!");
+                            drawTable.showMessage("请输入整数！");
                         }
                     }
                 };
@@ -628,7 +589,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         });
 
-        menuItem[7] = menu.add(0, 0, 0, "Help");
+        menuItem[7] = menu.add(0, 0, 0, "帮助");
         menuItem[7].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
@@ -639,15 +600,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 textView.setText(text);
                 ScrollView scrollView = new ScrollView(context);
                 scrollView.addView(textView);
-                InfoBox infoBox = new InfoBox(null, "Cancel", "OK", scrollView) {
+                final WebView webView = new WebView(context);
+                webView.loadUrl(manual);
+                InfoBox infoBox = new InfoBox(null, "取消", "确定", scrollView) {
                     @Override
                     void onNegative() {
-
+                        view(webView);
                     }
 
                     @Override
                     void onPositive() {
-                        viewManual();
+                        view(webView);
                     }
                 };
                 infoBox.showDialog();
@@ -656,6 +619,71 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         });
 
         return true;
+    }
+
+    static void view(WebView webView) {
+        new InfoBox(null, "取消", "确定", webView) {
+            @Override
+            void onNegative() {
+
+            }
+
+            @Override
+            void onPositive() {
+
+            }
+        }.showDialog();
+    }
+
+    abstract class FileOperation {
+        abstract void operateFile();
+
+        void selectFile() {
+            File[] files = new File(homeDirectory).listFiles();
+            LinkedList<String> list = new LinkedList<>();
+            for (File file : files) {
+                String name = file.getName();
+                if (!isSystemFile(name)) {
+                    list.add(name);
+                }
+            }
+            if (0 == list.size()) {
+                downloadDemos();
+                return;
+            }
+            items = new String[list.size()];
+            list.toArray(items);
+            selectedItem = null == openedFile || !openedFile.exists() ? 0 : list.indexOf(openedFile.getName());
+            InfoBox infoBox = new InfoBox(null, "取消", "确定", null) {
+                @Override
+                void onNegative() {
+
+                }
+
+                @Override
+                void onPositive() {
+                    openedFile = new File(homeDirectory + items[selectedItem]);
+                    new InfoBox("导入 \"" + openedFile.getName() + "\" ？", "取消", "确定", null) {
+                        @Override
+                        void onNegative() {
+
+                        }
+
+                        @Override
+                        void onPositive() {
+                            operateFile();
+                        }
+                    }.showDialog();
+                }
+            };
+            infoBox.getAdb().setSingleChoiceItems(items, selectedItem, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    selectedItem = i;
+                }
+            });
+            infoBox.showDialog();
+        }
     }
 
 }
