@@ -2,6 +2,8 @@ package com.limshx.ippotim;
 
 import com.limshx.ippotim.kernel.Adapter;
 import com.limshx.ippotim.kernel.GraphicsOperations;
+import com.limshx.ippotim.kernel.StatementType;
+import com.limshx.ippotim.kernel.TreeNode;
 
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
@@ -27,6 +29,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Set;
 
@@ -36,14 +39,20 @@ class DrawTable extends JPanel implements GraphicsOperations {
     private Font font;
     private final int jTextFieldColumns = 10;
     JTextArea jTextArea = new JTextArea();
+    private JButton[] jButtons;
+    private LinkedList<JTextField> jTextFields;
+    private JComboBox<String> jComboBox;
+    private TreeNode treeNode;
 
     private void create(JFrame jFrame, String label, boolean insertOrModify) {
+        jTextFields = new LinkedList<>();
         JFrame input = new JFrame();
         input.setLayout(new GridLayout(2, 1));
         JPanel jPanel = new JPanel();
         jPanel.setLayout(new FlowLayout());
         jPanel.add(new JLabel(label));
         JTextField jTextField = new JTextField();
+        jTextFields.add(jTextField);
         jTextField.setColumns(jTextFieldColumns);
         jPanel.add(jTextField);
         input.add(jPanel);
@@ -72,8 +81,9 @@ class DrawTable extends JPanel implements GraphicsOperations {
 
         input.add(jPanel);
         input.pack();
-        Main.setWindowCenter(input);
+        Ippotim.setWindowCenter(input);
         input.setVisible(true);
+        input.setAlwaysOnTop(true);
     }
 
     private void create(String statement, boolean insertOrModify) {
@@ -86,27 +96,45 @@ class DrawTable extends JPanel implements GraphicsOperations {
     }
 
     private void create(boolean insertOrModify) {
+        if (!insertOrModify) {
+            treeNode = adapter.getTreeNode();
+            if (StatementType.HEAD == treeNode.statementType) {
+                s = treeNode.getContent();
+                if (!s.isEmpty()) {
+                    if (adapter.isFunctionOrStructure()) {
+                        create("Function");
+                    } else {
+                        create("Structure");
+                    }
+                } else {
+                    showMessage("不能修改空白头语句！");
+                }
+                return;
+            }
+        }
         JFrame jFrame = new JFrame();
         int length = 12;
         jFrame.setLayout(new GridLayout(length / 2, 2));
-        JButton[] jButtons = new JButton[length];
-        jButtons[0] = new JButton("定义");
+        jButtons = new JButton[length];
+        jButtons[0] = new JButton(StatementType.DEFINE.name);
         jButtons[0].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                jTextFields = new LinkedList<>();
                 JFrame input = new JFrame();
                 input.setLayout(new GridLayout(2, 1));
                 JPanel[] jPanels = new JPanel[2];
 
                 jPanels[0] = new JPanel();
                 jPanels[0].setLayout(new GridLayout(1, 2));
-                JComboBox<String> jComboBox = new JComboBox<>();
+                jComboBox = new JComboBox<>();
                 Set<String> structures = adapter.getStructures();
                 for (String structure : structures) {
                     jComboBox.addItem(structure);
                 }
                 jPanels[0].add(jComboBox);
                 JTextField jTextField = new JTextField();
+                jTextFields.add(jTextField);
                 jTextField.setColumns(jTextFieldColumns);
                 jPanels[0].add(jTextField);
 
@@ -136,26 +164,29 @@ class DrawTable extends JPanel implements GraphicsOperations {
                 input.add(jPanels[0]);
                 input.add(jPanels[1]);
                 input.pack();
-                Main.setWindowCenter(input);
+                Ippotim.setWindowCenter(input);
                 input.setVisible(true);
+                input.setAlwaysOnTop(true);
             }
         });
-        jButtons[1] = new JButton("赋值");
+        jButtons[1] = new JButton(StatementType.ASSIGN.name);
         jButtons[1].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                jTextFields = new LinkedList<>();
                 JFrame input = new JFrame();
                 input.setLayout(new GridLayout(2, 1));
                 JPanel jPanel = new JPanel();
                 jPanel.setLayout(new FlowLayout());
-                JTextField[] jTextFields = new JTextField[2];
-                jTextFields[0] = new JTextField();
-                jTextFields[0].setColumns(jTextFieldColumns);
-                jTextFields[1] = new JTextField();
-                jTextFields[1].setColumns(jTextFieldColumns);
-                jPanel.add(jTextFields[0]);
+                JTextField jTextField = new JTextField();
+                jTextFields.add(jTextField);
+                jPanel.add(jTextField);
+                jTextField.setColumns(jTextFieldColumns);
                 jPanel.add(new JLabel("="));
-                jPanel.add(jTextFields[1]);
+                jTextField = new JTextField();
+                jTextFields.add(jTextField);
+                jPanel.add(jTextField);
+                jTextField.setColumns(jTextFieldColumns);
                 input.add(jPanel);
                 jPanel = new JPanel();
                 jPanel.setLayout(new FlowLayout());
@@ -164,7 +195,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
                 jButtons[0].addActionListener(new AbstractAction() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-                        String statement = jTextFields[0].getText() + " = " + jTextFields[1].getText();
+                        String statement = jTextFields.get(0).getText() + " = " + jTextFields.get(1).getText();
                         create(statement, insertOrModify);
                         input.setVisible(false);
                         jFrame.setVisible(false);
@@ -182,32 +213,33 @@ class DrawTable extends JPanel implements GraphicsOperations {
 
                 input.add(jPanel);
                 input.pack();
-                Main.setWindowCenter(input);
+                Ippotim.setWindowCenter(input);
                 input.setVisible(true);
+                input.setAlwaysOnTop(true);
             }
         });
-        jButtons[2] = new JButton("输入");
+        jButtons[2] = new JButton(StatementType.INPUT.name);
         jButtons[2].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 create(jFrame, adapter.getCurrentKeywords()[7], insertOrModify);
             }
         });
-        jButtons[3] = new JButton("输出");
+        jButtons[3] = new JButton(StatementType.OUTPUT.name);
         jButtons[3].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 create(jFrame, adapter.getCurrentKeywords()[8], insertOrModify);
             }
         });
-        jButtons[4] = new JButton("如果");
+        jButtons[4] = new JButton(StatementType.IF.name);
         jButtons[4].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 create(jFrame, adapter.getCurrentKeywords()[1], insertOrModify);
             }
         });
-        jButtons[5] = new JButton("否则");
+        jButtons[5] = new JButton(StatementType.ELSE.name);
         jButtons[5].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -216,21 +248,21 @@ class DrawTable extends JPanel implements GraphicsOperations {
                 jFrame.setVisible(false);
             }
         });
-        jButtons[6] = new JButton("循环");
+        jButtons[6] = new JButton(StatementType.WHILE.name);
         jButtons[6].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 create(jFrame, adapter.getCurrentKeywords()[3], insertOrModify);
             }
         });
-        jButtons[7] = new JButton("注释");
+        jButtons[7] = new JButton(StatementType.COMMENT.name);
         jButtons[7].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 create(jFrame, "//", insertOrModify);
             }
         });
-        jButtons[8] = new JButton("跳出");
+        jButtons[8] = new JButton(StatementType.BREAK.name);
         jButtons[8].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -239,7 +271,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
                 jFrame.setVisible(false);
             }
         });
-        jButtons[9] = new JButton("继续");
+        jButtons[9] = new JButton(StatementType.CONTINUE.name);
         jButtons[9].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -248,23 +280,23 @@ class DrawTable extends JPanel implements GraphicsOperations {
                 jFrame.setVisible(false);
             }
         });
-        jButtons[10] = new JButton("调用");
+        jButtons[10] = new JButton(StatementType.CALL.name);
         jButtons[10].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                jTextFields = new LinkedList<>();
                 JFrame input = new JFrame();
                 input.setLayout(new GridLayout(2, 1));
                 JPanel[] jPanels = new JPanel[2];
 
                 jPanels[0] = new JPanel();
                 jPanels[0].setLayout(new GridLayout(1, 2));
-                JComboBox<String> jComboBox = new JComboBox<>();
+                jComboBox = new JComboBox<>();
                 JPanel jPanel = new JPanel();
                 jPanel.add(new JLabel("{"));
                 jPanel.add(jComboBox);
                 jPanel.add(new JLabel("}"));
                 jPanels[0].add(jPanel);
-                LinkedList<JTextField> jTextFields = new LinkedList<>();
                 jComboBox.addItemListener(e1 -> {
                     if (null != jComboBox.getSelectedItem()) {
                         jTextFields.clear();
@@ -317,11 +349,11 @@ class DrawTable extends JPanel implements GraphicsOperations {
                 input.add(jPanels[0]);
                 input.add(jPanels[1]);
                 input.pack();
-                Main.setWindowCenter(input);
+                Ippotim.setWindowCenter(input);
                 input.setVisible(true);
             }
         });
-        jButtons[11] = new JButton("返回");
+        jButtons[11] = new JButton(StatementType.RETURN.name);
         jButtons[11].addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -337,11 +369,45 @@ class DrawTable extends JPanel implements GraphicsOperations {
             jButtons[5].setEnabled(false);
         }
         jFrame.pack();
-        Main.setWindowCenter(jFrame);
+        Ippotim.setWindowCenter(jFrame);
         jFrame.setVisible(true);
+        if (!insertOrModify) {
+            modify();
+        }
+    }
+
+    private void modify() {
+        StatementType statementType = treeNode.statementType;
+        String[] strings = treeNode.getContent().split(" ", 2);
+        ArrayList<String> elements = treeNode.elements;
+        if (null != statementType) {
+            jButtons[statementType.ordinal()].doClick();
+            switch (statementType) {
+                case DEFINE:
+                    jComboBox.setSelectedItem(strings[0]);
+                    jTextFields.get(0).setText(strings[1]);
+                    break;
+                case ASSIGN:
+                    jTextFields.get(0).setText(elements.get(0));
+                    jTextFields.get(1).setText(elements.get(2));
+                    break;
+                case CALL:
+                    jComboBox.setSelectedItem(elements.get(0));
+                    for (int i = 0; i < jTextFields.size(); i++) {
+                        jTextFields.get(i).setText(elements.get(i + 1));
+                    }
+                    break;
+                default:
+                    if (2 == strings.length) {
+                        jTextFields.get(0).setText(strings[1]);
+                    }
+                    break;
+            }
+        }
     }
 
     private String s;
+
     public void create(String type) {
         switch (type) {
             case "Function":
@@ -515,7 +581,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
         jPanel.add(jButtons[0]);
         jPanel.add(jButtons[1]);
         jFrame.add(jPanel);
-        Main.setWindowCenter(jFrame);
+        Ippotim.setWindowCenter(jFrame);
 //        jFrame.setAlwaysOnTop(true);
         jFrame.setVisible(true);
         // 这样就不用通过添加空格统一按钮长度了，setSize()不行
@@ -592,7 +658,7 @@ class DrawTable extends JPanel implements GraphicsOperations {
         ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         if (null == adapter) {
-            adapter = new Adapter(this, getWidth(), getHeight(), 1, new File(Main.homeDirectory + "ippotim.properties"));
+            adapter = new Adapter(this, getWidth(), getHeight(), 1, new File(Ippotim.homeDirectory + "ippotim.properties"));
         }
         if (isScreenChanged) {
             isScreenChanged = false;

@@ -70,6 +70,10 @@ public class Adapter {
         return selectedList.treeNodes.get(selectedTreeNodeIndex);
     }
 
+    public boolean isFunctionOrStructure() {
+        return Color.YELLOW == selectedList.color.rectangleColor;
+    }
+
     public void setScreen(int width, int height) {
         Adapter.width = width;
         Adapter.height = height;
@@ -235,6 +239,7 @@ public class Adapter {
     private File output;
     static FileOutputStream fileOutputStream;
     private static boolean running;
+
     public void run() {
         registerStructure();
         Executor executor = new Executor();
@@ -498,6 +503,15 @@ public class Adapter {
     }
 
     public void createFunction(String s) {
+        if (null != selectedList) {
+            unregisterFunction(selectedList);
+            if (isValidFunctionHead(s, true)) {
+                TreeNode t = selectedList.treeNodes.get(selectedTreeNodeIndex);
+                t.update(s, true);
+            }
+            registerFunction(selectedList);
+            return;
+        }
         if (isValidFunctionHead(s, true)) {
             List.currentGroupColor = colors[2];
             List function = new List(x, y, null);
@@ -524,6 +538,15 @@ public class Adapter {
     }
 
     public void createStructure(String s) {
+        if (null != selectedList) {
+            unregisterStructure(selectedList);
+            if (isValidStructureName(s)) {
+                TreeNode t = selectedList.treeNodes.get(selectedTreeNodeIndex);
+                t.update(s, true);
+            }
+            registerStructure(selectedList, true);
+            return;
+        }
         if (isValidStructureName(s)) {
             List.currentGroupColor = colors[0];
             List structure = new List(x, y, null);
@@ -637,27 +660,9 @@ public class Adapter {
     // 选中矩形后长按即弹出输入窗口让更新内容，如果是改了像if、else、while这样有子句者则删除子句，或者为了防止误触还是设置一个modify菜单项。本来是可以直接改的，不过改变等价于删除加添加，只是这样删除第一个矩形的时候就难了，可以在TreeNode链表再添加一个不关联矩形的头结点，只是第一个矩形其实没有删除的必要
     public void modify(String s) {
         TreeNode t = selectedList.treeNodes.get(selectedTreeNodeIndex);
-        // 特殊结点删除作特殊处理
-        if (0 == selectedTreeNodeIndex) {
-            if (Color.RED == selectedList.color.rectangleColor) { // 说明是结构定义
-                unregisterStructure(selectedList);
-                if (isValidStructureName(s)) {
-                    t.update(s, true);
-                }
-                registerStructure(selectedList, true);
-            } else if (Color.YELLOW == selectedList.color.rectangleColor) { // 说明是函数定义
-                unregisterFunction(selectedList);
-                if (isValidFunctionHead(s, true)) {
-                    t.update(s, true);
-                }
-                registerFunction(selectedList);
-            }
-            return; // 这个return很必要，一段时间不看都不记得当初是怎么想的怎么写上去的了
-        } else {
-            if (!isValidStatement(t.getContent(), s, false)) {
-                graphicsOperations.showMessage("无效的语句！");
-                return;
-            }
+        if (!isValidStatement(t.getContent(), s, false)) {
+            graphicsOperations.showMessage("无效的语句！");
+            return;
         }
         t.update(s, false);
         boolean hasSubTreeNodes = StatementType.IF == t.statementType || StatementType.WHILE == t.statementType;
@@ -920,7 +925,7 @@ public class Adapter {
                     // 选中有子句的矩形后同时反色显示其子句的第一个矩形，便于查看
                     targetList = focusedTreeNode.list;
                     break;
-                case FUNCTION_CALL:
+                case CALL:
                     // 选中函数调用语句所在的矩形后反色显示调用到的函数所在主句的第一个矩形，便于查看。
                     targetList = focusedTreeNode.matchedFunction;
                     break;
@@ -978,12 +983,12 @@ public class Adapter {
                 focusedY = baseY;
             }
         }
-        if (null != preArrow) {
-            preArrow.draw();
-        }
         // selectedList可以为空，两个都可以为空则用Objects.equals()
         if (list.equals(selectedList)) {
             TreeNode.tail.draw(baseX, baseY + Size.height, true, list.color.rectangleColor, list.color.stringColor);
+        }
+        if (null != preArrow) {
+            preArrow.draw();
         }
         for (Arrow arrow : arrows) {
             drawList(arrow.list, arrow);

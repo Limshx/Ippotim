@@ -238,7 +238,7 @@ class Executor {
                     statementsCtrl = 2;
                     break;
                 }
-                case FUNCTION_CALL: {
+                case CALL: {
                     run(instances, statement);
                     break;
                 }

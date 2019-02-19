@@ -15,9 +15,10 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.WindowConstants;
-import java.awt.Toolkit;
-import java.awt.GridLayout;
 import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.WindowAdapter;
@@ -26,12 +27,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.LinkedList;
 
-class Main extends JFrame {
+//import com.apple.eawt.Application;
+
+class Ippotim extends JFrame {
     static String homeDirectory = System.getProperty("user.dir") + "/";
     private static File openedFile;
     private static int screenWidth, screenHeight;
 
-    private Main(String s) {
+    private Ippotim(String s) {
         super(s);
     }
 
@@ -61,15 +64,18 @@ class Main extends JFrame {
             }
         }
         initScreenSize();
-        Main main = new Main("The Ippotim Programming Language");
+        Ippotim ippotim = new Ippotim("The Ippotim Programming Language");
+        Image image = null;
         try {
-            main.setIconImage(ImageIO.read(main.getClass().getResource("ippotim.png")));
+            image = ImageIO.read(ippotim.getClass().getResource("ippotim.png"));
         } catch (IOException e) {
             e.printStackTrace();
         }
+        ippotim.setIconImage(image);
         // macOS下菜单栏放到全局菜单栏
         if (osName.contains("Mac")) {
             System.setProperty("apple.laf.useScreenMenuBar", "true");
+//            Application.getApplication().setDockIconImage(image);
         }
         DrawTable drawTable = new DrawTable();
         JMenuBar jMenuBar = new JMenuBar();
@@ -303,11 +309,11 @@ class Main extends JFrame {
             jMenu.add(jCheckBoxMenuItem);
             jMenuBar.add(jMenu);
         }
-        main.setJMenuBar(jMenuBar);
-        main.add(drawTable);
-        main.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        main.setSize(screenWidth / 2, screenWidth / 2);
-        setWindowCenter(main);
-        main.setVisible(true);
+        ippotim.setJMenuBar(jMenuBar);
+        ippotim.add(drawTable);
+        ippotim.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        ippotim.setSize(screenWidth / 2, screenWidth / 2);
+        setWindowCenter(ippotim);
+        ippotim.setVisible(true);
     }
 }

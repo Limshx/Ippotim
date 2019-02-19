@@ -90,7 +90,7 @@ class Syntax {
     // 函数调用如果还是由变量类型序列确定的话，似乎得运行时才能够做到了。其实不需要，至少对于现在的设计而言，通过处理之前的定义语句即可。这里要注意的是：getCommandType()应当是面向一个TreeNode组的，毕竟main函数也是函数，而函数被设计成比较完美的沙盒机制。至于说使用传统的函数名设计，其实也要校验参数类型，所以直接砍掉函数名也是合理的。这个首先需要找到执行到函数调用语句前执行到的所有语句，可以倒推回去，先找到所在组的首结点，然后找到所在子句的主句，然后再找到主句所在的组的首结点，得到所有的定义语句；难在根据子句找主句。可以遍历vectorLine找到主句的矩形编号，然后遍历vectorRectangle找到组号。这样是可行的，但效率太低了，不如修改TreeNode定义，添加一个指向主句的指针，空间复杂度换时间复杂度。即便如此，对于每一个函数调用语句都回溯似乎也是不可忍受的，只能深度优先遍历之对于函数集合中的每一个函数进行深度优先遍历，这样指向前驱结点的指针preTreeNode也可以不要了。
     // 之所以要添加预编译就是想要去掉频繁查表的开销，然而还有1张表没有去掉，这就是变量表。变量表似乎不能通过预编译去掉，像C语言对于变量的处理或者说实现应该是借助各种寻址方式，其实变量都是由定义语句生成的，如此说来变量确实可以在预编译时
     static void updateStatementType(TreeNode statement) {
-        if (StatementType.FUNCTION_CALL == statement.statementType) {
+        if (StatementType.CALL == statement.statementType) {
             statement.elements = getRegularElements(statement.getContent());
         }
         int size = statement.elements.size();
@@ -160,7 +160,7 @@ class Syntax {
                     statement.elements.set(0, functionName);
                     String parameters = getParameters(statement.matchedFunction);
                     statement.elements.addAll(getFormalInstanceNames(parameters));
-                    statement.statementType = StatementType.FUNCTION_CALL;
+                    statement.statementType = StatementType.CALL;
                     mutableStatements.add(statement);
                     return;
                 }

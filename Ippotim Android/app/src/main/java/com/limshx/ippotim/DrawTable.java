@@ -25,8 +25,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 import com.limshx.ippotim.kernel.Adapter;
 import com.limshx.ippotim.kernel.GraphicsOperations;
+import com.limshx.ippotim.kernel.StatementType;
+import com.limshx.ippotim.kernel.TreeNode;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Set;
 
@@ -175,6 +178,12 @@ public class DrawTable extends View implements GraphicsOperations {
         return Math.sqrt((1280 * 720d) / (displayMetrics.widthPixels * displayMetrics.heightPixels));
     }
 
+    private LinkedList<Button> buttonList;
+    private LinkedList<EditText> editTextList;
+    private Spinner spinner;
+    private ArrayAdapter<String> arrayAdapter;
+    private TreeNode treeNode;
+
     private Button elseButton;
 
     private TableRow getRow(String left, OnClickListener leftEvent, String right, OnClickListener rightEvent) {
@@ -182,6 +191,8 @@ public class DrawTable extends View implements GraphicsOperations {
         Button[] buttons = new Button[2];
         buttons[0] = new Button(context);
         buttons[1] = new Button(context);
+        buttonList.add(buttons[0]);
+        buttonList.add(buttons[1]);
         buttons[0].setText(left);
         buttons[0].setOnClickListener(leftEvent);
         if (right.equals("否则")) {
@@ -213,7 +224,7 @@ public class DrawTable extends View implements GraphicsOperations {
             preDialog.cancel();
             linearLayout.removeAllViews();
         }
-        final LinkedList<EditText> editTexts = new LinkedList<>();
+        editTextList = new LinkedList<>();
         linearLayout = new LinearLayout(context);
         TextView textView = new TextView(context);
         textView.setText("{");
@@ -229,20 +240,21 @@ public class DrawTable extends View implements GraphicsOperations {
             editText.setSingleLine();
             editText.setSelectAllOnFocus(true);
             linearLayout.addView(editText);
-            editTexts.add(editText);
+            editTextList.add(editText);
         }
         HorizontalScrollView horizontalScrollView = new HorizontalScrollView(context);
         horizontalScrollView.addView(linearLayout);
         InfoBox infoBox = new InfoBox(null, "取消", "确定", horizontalScrollView) {
             @Override
             void onNegative() {
-
+                isFirst = true;
             }
 
             @Override
             void onPositive() {
+                isFirst = true;
                 StringBuilder stringBuilder = new StringBuilder("{" + spinner.getSelectedItem() + "}" + " ");
-                for (EditText editText : editTexts) {
+                for (EditText editText : editTextList) {
                     String parameter = editText.getText().toString().trim();
                     if (parameter.isEmpty()) {
                         showMessage("请补全参数！");
@@ -261,12 +273,14 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     private void create(final AlertDialog alertDialog, final String label, final boolean insertOrModify) {
+        editTextList = new LinkedList<>();
         LinearLayout linearLayout = new LinearLayout(context);
         linearLayout.setOrientation(LinearLayout.HORIZONTAL);
         TextView textView = new TextView(context);
         textView.setText(label);
         linearLayout.addView(textView);
         final EditText editText = new EditText(context);
+        editTextList.add(editText);
         linearLayout.addView(editText);
         new InfoBox(null, "取消", "确定", linearLayout) {
             @Override
@@ -283,6 +297,24 @@ public class DrawTable extends View implements GraphicsOperations {
     }
 
     private void create(final boolean insertOrModify) {
+        if (!insertOrModify) {
+            treeNode = adapter.getTreeNode();
+            if (StatementType.HEAD == treeNode.statementType) {
+                String content = treeNode.getContent();
+                if (!content.isEmpty()) {
+                    if (adapter.isFunctionOrStructure()) {
+                        create("Function");
+                    } else {
+                        create("Structure");
+                    }
+                    editText.setText(content);
+                } else {
+                    showMessage("不能修改空白头语句！");
+                }
+                return;
+            }
+        }
+        buttonList = new LinkedList<>();
         TableLayout rows = new TableLayout(context);
         AlertDialog.Builder adb = new AlertDialog.Builder(context);
         ScrollView scrollView = new ScrollView(context);
@@ -293,12 +325,13 @@ public class DrawTable extends View implements GraphicsOperations {
         rows.addView(getRow("定义", new OnClickListener() {
             @Override
             public void onClick(View v) {
+                editTextList = new LinkedList<>();
                 Set<String> structures = adapter.getStructures();
-                ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item);
+                arrayAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item);
                 for (String structure : structures) {
                     arrayAdapter.add(structure);
                 }
-                final Spinner spinner = new Spinner(context);
+                spinner = new Spinner(context);
                 spinner.setAdapter(arrayAdapter);
 //                Dialog dialog = new Dialog(context);
 //                dialog.setContentView(spinner);
@@ -307,6 +340,7 @@ public class DrawTable extends View implements GraphicsOperations {
                 linearLayout.setOrientation(LinearLayout.HORIZONTAL);
                 linearLayout.addView(spinner);
                 final EditText editText = new EditText(context);
+                editTextList.add(editText);
                 linearLayout.addView(editText);
                 HorizontalScrollView horizontalScrollView = new HorizontalScrollView(context);
                 horizontalScrollView.addView(linearLayout);
@@ -326,11 +360,14 @@ public class DrawTable extends View implements GraphicsOperations {
         }, "赋值", new OnClickListener() {
             @Override
             public void onClick(View v) {
+                editTextList = new LinkedList<>();
                 LinearLayout linearLayout = new LinearLayout(context);
                 linearLayout.setOrientation(LinearLayout.HORIZONTAL);
                 final EditText[] editTexts = new EditText[2];
                 editTexts[0] = new EditText(context);
                 editTexts[1] = new EditText(context);
+                editTextList.add(editTexts[0]);
+                editTextList.add(editTexts[1]);
                 linearLayout.addView(editTexts[0]);
                 TextView textView = new TextView(context);
                 textView.setText("=");
@@ -405,13 +442,13 @@ public class DrawTable extends View implements GraphicsOperations {
                     showMessage("请先定义函数！");
                     return;
                 }
-                ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item);
+                arrayAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item);
                 for (String function : functions) {
                     if (!function.isEmpty()) {
                         arrayAdapter.add(function);
                     }
                 }
-                final Spinner spinner = new Spinner(context);
+                spinner = new Spinner(context);
                 spinner.setAdapter(arrayAdapter);
                 showFunctionCallDialog(alertDialog, spinner, insertOrModify);
                 spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -461,9 +498,50 @@ public class DrawTable extends View implements GraphicsOperations {
             elseButton.setEnabled(false);
         }
         alertDialog.show();
+        if (!insertOrModify) {
+            modify(alertDialog);
+        }
     }
 
-    private String text;
+    private void modify(AlertDialog alertDialog) {
+        StatementType statementType = treeNode.statementType;
+        if (null != statementType) {
+            switch (statementType) {
+                case ELSE: // 修改语句时else按钮虽然已经被禁用了，但似乎还是能performClick()
+                case BREAK:
+                case CONTINUE:
+                case RETURN:
+                    return;
+            }
+            String[] strings = treeNode.getContent().split(" ", 2);
+            ArrayList<String> elements = treeNode.elements;
+            buttonList.get(statementType.ordinal()).performClick();
+            switch (statementType) {
+                case DEFINE:
+                    spinner.setSelection(arrayAdapter.getPosition(strings[0]));
+                    editTextList.get(0).setText(strings[1]);
+                    break;
+                case ASSIGN:
+                    editTextList.get(0).setText(elements.get(0));
+                    editTextList.get(1).setText(elements.get(2));
+                    break;
+                case CALL:
+                    spinner.setSelection(arrayAdapter.getPosition(elements.get(0)));
+                    showFunctionCallDialog(alertDialog, spinner, false);
+                    for (int i = 0; i < editTextList.size(); i++) {
+                        editTextList.get(i).setText(elements.get(i + 1));
+                    }
+                    break;
+                default:
+                    if (2 == strings.length) {
+                        editTextList.get(0).setText(strings[1]);
+                    }
+                    break;
+            }
+        }
+    }
+
+    private EditText editText;
 
     @Override
     public void create(final String type) { // 这里不能sleep()，不然会阻塞主线程卡死，getInput()没事是因为不是主线程
@@ -485,7 +563,7 @@ public class DrawTable extends View implements GraphicsOperations {
                 title = null;
                 break;
         }
-        final EditText editText = new EditText(context);
+        editText = new EditText(context);
         InfoBox infoBox = new InfoBox(title, "取消", "确定", editText) {
             @Override
             void onNegative() {
@@ -493,7 +571,7 @@ public class DrawTable extends View implements GraphicsOperations {
 
             @Override
             void onPositive() {
-                text = editText.getText().toString();
+                String text = editText.getText().toString();
                 // 去掉首尾空格符，这样就不可能调用到Ippotim语言里的main函数了。
                 text = text.trim();
                 if (!text.isEmpty()) {
