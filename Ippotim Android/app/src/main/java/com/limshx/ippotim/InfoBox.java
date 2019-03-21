@@ -68,12 +68,9 @@ abstract class InfoBox {  // 当初这个是放在MainActivity里，想让DrawTa
         adb.setView(view).setTitle(title).setNegativeButton(negative, null).setPositiveButton(positive, null);
         alertDialog = adb.create();
         if (view instanceof EditText) {
-            final EditText editText = (EditText) view;
-            editText.setSingleLine();
-            editText.setSelectAllOnFocus(true);
             alertDialog.setOnShowListener(new DialogInterface.OnShowListener() {
                 public void onShow(DialogInterface dialog) {
-                    inputMethodManager.showSoftInput(editText, InputMethodManager.RESULT_UNCHANGED_SHOWN);
+                    inputMethodManager.showSoftInput(view, InputMethodManager.RESULT_UNCHANGED_SHOWN);
                 }
             });
         }

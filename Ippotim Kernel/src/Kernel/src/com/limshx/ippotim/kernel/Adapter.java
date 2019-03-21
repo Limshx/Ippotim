@@ -70,8 +70,8 @@ public class Adapter {
         return selectedList.treeNodes.get(selectedTreeNodeIndex);
     }
 
-    public boolean isFunctionOrStructure() {
-        return Color.YELLOW == selectedList.color.rectangleColor;
+    public boolean isStructure() {
+        return Color.RED == selectedList.color.rectangleColor;
     }
 
     public void setScreen(int width, int height) {
@@ -741,8 +741,9 @@ public class Adapter {
                 TreeNode t = list.treeNodes.get(i);
                 int width = t.pixelWidth;
                 if (baseX <= x && x <= baseX + width && baseY <= y && y <= baseY + Size.height) {
+                    List sourceList = getSourceList(list);
                     // 不能selectedList.equals(list)，因为selectedList可以为null。
-                    if (null != selectedList && !getSourceList(list).equals(getSourceList(selectedList))) {
+                    if (null != selectedList && !sourceList.equals(getSourceList(selectedList)) && !sourceList.equals(targetList)) {
                         break;
                     }
                     selectedList = list;
@@ -888,6 +889,7 @@ public class Adapter {
         }
     }
 
+    private List targetList;
     private void drawFocusedTreeNode(int x, int y) {
         TreeNode focusedTreeNode = hasSelectedTreeNode() ? selectedList.treeNodes.get(selectedTreeNodeIndex) : null;
         if (focusedTreeNode != null) {
@@ -914,7 +916,6 @@ public class Adapter {
                 }
                 return;
             }
-            List targetList = null;
             if (null == focusedTreeNode.statementType) {
                 return;
             }
@@ -984,7 +985,7 @@ public class Adapter {
             }
         }
         // selectedList可以为空，两个都可以为空则用Objects.equals()
-        if (list.equals(selectedList)) {
+        if (hasSelectedTreeNode() && list.equals(selectedList)) {
             TreeNode.tail.draw(baseX, baseY + Size.height, true, list.color.rectangleColor, list.color.stringColor);
         }
         if (null != preArrow) {
@@ -1015,6 +1016,7 @@ public class Adapter {
         }
         // 这里判focusedX是因为虽然选中了矩形，但该矩形不在屏幕内，这种情况只有在桌面端才存在或者说会出现之鼠标可以拖动到窗口外。
         // 不能轻而易举理解的判空等操作要注释，不然后续会以为是冗余代码又难以证明。
+        targetList = null;
         if (hasSelectedTreeNode() && null != focusedX) {
             drawFocusedTreeNode(focusedX, focusedY);
             focusedX = null;

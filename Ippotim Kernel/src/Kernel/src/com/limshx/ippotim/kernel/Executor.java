@@ -442,6 +442,9 @@ class Executor {
         if (2 == statementsCtrl) {
             statementsCtrl = 0; // 似乎不用判断直接置为false即可或者说也是一样的
         }
+        if (3 == statementsCtrl) {
+            return false;
+        }
         if (stop) {
             return false;
         }

@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private DrawerLayout drawer;
     private DrawTable drawTable;
     private String manual = "https://github.com/Limshx/Ippotim/blob/master/Docs/manual/README.md";
-    private String[] demos = {"招牌菜", "基础篇 输入输出", "基础篇 条件语句", "基础篇 循环语句", "基础篇 复合布尔表达式", "基础篇 字符串遍历", "基础篇 函数", "基础篇 空值", "基础篇 结构体", "基础篇 嵌套结构体", "基础篇 中文和表情标识符", "基础篇 取余运算", "基础篇 数组", "基础篇 广义数组", "基础篇 综合", "进阶篇 数组", "进阶篇 广义数组", "进阶篇 函数", "进阶篇 模拟函数指针", "进阶篇 递归函数", "进阶篇 局部变量", "进阶篇 链表", "进阶篇 栈", "高级篇 使用头结点的栈", "高级篇 出队后回收利用结点的队列", "高级篇 队列的栈", "高级篇 空类型链表", "高级篇 螺旋三角问题递归", "高级篇 螺旋三角问题非递归"};
+    private String[] demos = {"招牌菜", "基础篇 输入输出", "基础篇 条件语句", "基础篇 循环语句", "基础篇 布尔表达式", "基础篇 字符串遍历", "基础篇 函数", "基础篇 空值", "基础篇 结构体", "基础篇 嵌套结构体", "基础篇 中文和表情标识符", "基础篇 取余运算", "基础篇 数组", "基础篇 广义数组", "基础篇 综合", "进阶篇 数组", "进阶篇 广义数组", "进阶篇 函数", "进阶篇 模拟函数指针", "进阶篇 递归函数", "进阶篇 局部变量", "进阶篇 链表", "进阶篇 栈", "高级篇 使用头结点的栈", "高级篇 出队后回收利用结点的队列", "高级篇 队列的栈", "高级篇 空类型链表", "高级篇 螺旋三角问题递归", "高级篇 螺旋三角问题非递归", "究极篇 排序算法"};
     private int selectedItem;
 
     // 这是按需锁方向的标准代码
@@ -73,9 +73,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && PackageManager.PERMISSION_GRANTED != checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
         } else {
-            if (initDirectoryFailed()) {
-                drawTable.showMessage("创建主目录失败！");
-            }
+            initHomeDirectory();
         }
         Toolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setTitleTextColor(Color.WHITE);
@@ -113,9 +111,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (0 == requestCode) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (initDirectoryFailed()) {
-                    drawTable.showMessage("创建主目录失败！");
-                }
+                initHomeDirectory();
             } else {
                 System.exit(0);
             }
@@ -124,7 +120,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     public void onBackPressed() {
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else {
@@ -246,14 +241,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return fileName.equals("ippotim.properties") || fileName.equals("ippotim.output");
     }
 
-    private boolean initDirectoryFailed() {
+    private void initHomeDirectory() {
         File file = new File(homeDirectory);
         if (!file.exists()) {
             if (file.mkdir()) {
                 download();
+            } else {
+                drawTable.showMessage("创建主目录失败！");
             }
         }
-        return false;
     }
 
     private void importFromFile() {
@@ -294,7 +290,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }.selectFile();
                 break;
             case R.id.Export:
-                final EditText editText = new EditText(context);
+                final EditText editText = drawTable.getEditText();
                 InfoBox infoBox = new InfoBox("输入项目名：", "取消", "确定", editText) {
                     @Override
                     void onNegative() {
@@ -381,9 +377,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     String text = defaultKeywords[i] + " -> ";
                     textView.setText(text);
                     linearLayout.addView(textView);
-                    editTexts[i] = new EditText(context);
-                    editTexts[i].setSingleLine();
-                    editTexts[i].setSelectAllOnFocus(true);
+                    editTexts[i] = drawTable.getEditText();
                     editTexts[i].setText(currentKeywords[i]);
                     linearLayout.addView(editTexts[i]);
                     layout.addView(linearLayout);
@@ -436,8 +430,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             default:
                 break;
         }
-
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
@@ -467,7 +459,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             return;
                         }
 
-                        final EditText editText = new EditText(context);
+                        final EditText editText = drawTable.getEditText();
                         terminal.infoBox[0] = new InfoBox("0~" + terminal.getPagesCount() + "：", "取消", "确定", editText) {
                             @Override
                             void onNegative() {
@@ -564,7 +556,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         menuItem[6].setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                final EditText editText = new EditText(context);
+                final EditText editText = drawTable.getEditText();
                 InfoBox infoBox = new InfoBox("输入容量：", "取消", "确定", editText) {
                     @Override
                     void onNegative() {
@@ -596,7 +588,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 TextView textView = new TextView(context);
                 textView.setTextColor(Color.BLACK);
                 textView.setAutoLinkMask(Linkify.ALL);
-                String text = "Ippotim语言是一门类C语言，语法简明易懂，适合于启蒙教学与算法演示。\n\nIppotim系列软件是Ippotim语言的官方IDE，借鉴了UML的图形设计思想，旨在打造一个清新优雅的图形编程平台。\n\nIppotim项目已在GitHub上以GPL-3.0开源，同时提供有安卓版和桌面版。笔者暂时只实现了简单的解释运行功能，后续会添加智能编程辅助功能。\n\n用户手册：" + manual;
+                String text = "Ippotim语言是一门类C语言，语法简明易懂，适用于启蒙教学与算法演示。\n\nIppotim系列软件是Ippotim语言的官方IDE，借鉴了UML的图形设计思想，旨在打造一个清新优雅的图形编程平台。\n\nIppotim项目已在GitHub上以GPL-3.0开源，同时提供有安卓版和桌面版。笔者暂时只实现了简单的解释运行功能，后续会添加智能编程辅助功能。\n\n用户手册：" + manual;
                 textView.setText(text);
                 ScrollView scrollView = new ScrollView(context);
                 scrollView.addView(textView);

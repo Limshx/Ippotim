@@ -222,7 +222,6 @@ class Ippotim extends JFrame {
         });
         jMenuItems[0].addActionListener(actionEvent -> new Thread(() -> {
             drawTable.jTextArea.setText("");
-            drawTable.stringBuilder = new StringBuilder();
             jFrame.setVisible(true);
             drawTable.adapter.run();
         }).start());

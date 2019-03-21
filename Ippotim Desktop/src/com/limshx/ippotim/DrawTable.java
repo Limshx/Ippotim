@@ -101,10 +101,10 @@ class DrawTable extends JPanel implements GraphicsOperations {
             if (StatementType.HEAD == treeNode.statementType) {
                 s = treeNode.getContent();
                 if (!s.isEmpty()) {
-                    if (adapter.isFunctionOrStructure()) {
-                        create("Function");
-                    } else {
+                    if (adapter.isStructure()) {
                         create("Structure");
+                    } else {
+                        create("Function");
                     }
                 } else {
                     showMessage("不能修改空白头语句！");
@@ -306,6 +306,9 @@ class DrawTable extends JPanel implements GraphicsOperations {
                         for (int i = 0; i < functionParametersCount; i++) {
                             JTextField jTextField = new JTextField();
                             jTextField.setColumns(jTextFieldColumns);
+                            if (i < treeNode.elements.size() / 2) {
+                                jTextField.setText(treeNode.elements.get(i + 1));
+                            }
                             jPanels[0].add(jTextField);
                             jTextFields.add(jTextField);
                         }
@@ -368,6 +371,13 @@ class DrawTable extends JPanel implements GraphicsOperations {
         if (!adapter.canCreateElse() || !insertOrModify) {
             jButtons[5].setEnabled(false);
         }
+        if (adapter.isStructure()) {
+            for (int i = 0; i < length; i++) {
+                if (i > 0) {
+                    jButtons[i].setEnabled(false);
+                }
+            }
+        }
         jFrame.pack();
         Ippotim.setWindowCenter(jFrame);
         jFrame.setVisible(true);
@@ -381,6 +391,13 @@ class DrawTable extends JPanel implements GraphicsOperations {
         String[] strings = treeNode.getContent().split(" ", 2);
         ArrayList<String> elements = treeNode.elements;
         if (null != statementType) {
+            switch (statementType) {
+                case ELSE: // 修改语句时else按钮虽然已经被禁用了，但似乎还是能performClick()
+                case BREAK:
+                case CONTINUE:
+                case RETURN:
+                    return;
+            }
             jButtons[statementType.ordinal()].doClick();
             switch (statementType) {
                 case DEFINE:
@@ -477,37 +494,11 @@ class DrawTable extends JPanel implements GraphicsOperations {
         g.drawString(str, x, y);
     }
 
-    StringBuilder stringBuilder;
-    private boolean hasSoftWrap;
-
     private void getOutput(String s) {
         if (s.equals("\n")) {
-            if (hasSoftWrap) {
-                hasSoftWrap = false;
-                return;
-            }
             jTextArea.append("\n");
-            stringBuilder = new StringBuilder();
         } else {
-            int cachedStringLength = stringBuilder.length();
-            int maxCachedStringLength = 1000;
-            if (maxCachedStringLength <= cachedStringLength + s.length()) {
-                hasSoftWrap = true;
-                int freeSpace = maxCachedStringLength - cachedStringLength;
-                jTextArea.append(s.substring(0, freeSpace));
-                jTextArea.append("\n");
-                stringBuilder = new StringBuilder();
-                String remainingString = s.substring(freeSpace);
-                if (!remainingString.equals("")) {
-                    getOutput(s.substring(freeSpace));
-                }
-            } else {
-                if (hasSoftWrap) {
-                    hasSoftWrap = false;
-                }
-                jTextArea.append(s);
-                stringBuilder.append(s);
-            }
+            jTextArea.append(s);
         }
     }
 

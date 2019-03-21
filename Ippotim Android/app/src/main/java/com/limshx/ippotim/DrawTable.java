@@ -178,13 +178,18 @@ public class DrawTable extends View implements GraphicsOperations {
         return Math.sqrt((1280 * 720d) / (displayMetrics.widthPixels * displayMetrics.heightPixels));
     }
 
-    private LinkedList<Button> buttonList;
+    private ArrayList<Button> buttonList;
     private LinkedList<EditText> editTextList;
     private Spinner spinner;
     private ArrayAdapter<String> arrayAdapter;
     private TreeNode treeNode;
 
-    private Button elseButton;
+    EditText getEditText() {
+        EditText editText = new EditText(context);
+        editText.setSingleLine();
+        editText.setSelectAllOnFocus(true);
+        return editText;
+    }
 
     private TableRow getRow(String left, OnClickListener leftEvent, String right, OnClickListener rightEvent) {
         TableRow row = new TableRow(context);
@@ -195,9 +200,6 @@ public class DrawTable extends View implements GraphicsOperations {
         buttonList.add(buttons[1]);
         buttons[0].setText(left);
         buttons[0].setOnClickListener(leftEvent);
-        if (right.equals("否则")) {
-            elseButton = buttons[1];
-        }
         buttons[1].setText(right);
         buttons[1].setOnClickListener(rightEvent);
         row.addView(buttons[0]);
@@ -236,9 +238,12 @@ public class DrawTable extends View implements GraphicsOperations {
         String data = (String) spinner.getSelectedItem();
         int functionParametersCount = adapter.getFunctionParametersCount(data);
         for (int i = 0; i < functionParametersCount; i++) {
-            EditText editText = new EditText(context);
-            editText.setSingleLine();
-            editText.setSelectAllOnFocus(true);
+            EditText editText = getEditText();
+            if (!insertOrModify) {
+                if (i < treeNode.elements.size() / 2) {
+                    editText.setText(treeNode.elements.get(i + 1));
+                }
+            }
             linearLayout.addView(editText);
             editTextList.add(editText);
         }
@@ -279,7 +284,7 @@ public class DrawTable extends View implements GraphicsOperations {
         TextView textView = new TextView(context);
         textView.setText(label);
         linearLayout.addView(textView);
-        final EditText editText = new EditText(context);
+        final EditText editText = getEditText();
         editTextList.add(editText);
         linearLayout.addView(editText);
         new InfoBox(null, "取消", "确定", linearLayout) {
@@ -302,10 +307,10 @@ public class DrawTable extends View implements GraphicsOperations {
             if (StatementType.HEAD == treeNode.statementType) {
                 String content = treeNode.getContent();
                 if (!content.isEmpty()) {
-                    if (adapter.isFunctionOrStructure()) {
-                        create("Function");
-                    } else {
+                    if (adapter.isStructure()) {
                         create("Structure");
+                    } else {
+                        create("Function");
                     }
                     editText.setText(content);
                 } else {
@@ -314,7 +319,7 @@ public class DrawTable extends View implements GraphicsOperations {
                 return;
             }
         }
-        buttonList = new LinkedList<>();
+        buttonList = new ArrayList<>();
         TableLayout rows = new TableLayout(context);
         AlertDialog.Builder adb = new AlertDialog.Builder(context);
         ScrollView scrollView = new ScrollView(context);
@@ -339,7 +344,7 @@ public class DrawTable extends View implements GraphicsOperations {
                 LinearLayout linearLayout = new LinearLayout(context);
                 linearLayout.setOrientation(LinearLayout.HORIZONTAL);
                 linearLayout.addView(spinner);
-                final EditText editText = new EditText(context);
+                final EditText editText = getEditText();
                 editTextList.add(editText);
                 linearLayout.addView(editText);
                 HorizontalScrollView horizontalScrollView = new HorizontalScrollView(context);
@@ -364,8 +369,8 @@ public class DrawTable extends View implements GraphicsOperations {
                 LinearLayout linearLayout = new LinearLayout(context);
                 linearLayout.setOrientation(LinearLayout.HORIZONTAL);
                 final EditText[] editTexts = new EditText[2];
-                editTexts[0] = new EditText(context);
-                editTexts[1] = new EditText(context);
+                editTexts[0] = getEditText();
+                editTexts[1] = getEditText();
                 editTextList.add(editTexts[0]);
                 editTextList.add(editTexts[1]);
                 linearLayout.addView(editTexts[0]);
@@ -495,7 +500,14 @@ public class DrawTable extends View implements GraphicsOperations {
 //            }
 //        });
         if (!adapter.canCreateElse() || !insertOrModify) {
-            elseButton.setEnabled(false);
+            buttonList.get(5).setEnabled(false);
+        }
+        if (adapter.isStructure()) {
+            for (int i = 0; i < buttonList.size(); i++) {
+                if (i > 0) {
+                    buttonList.get(i).setEnabled(false);
+                }
+            }
         }
         alertDialog.show();
         if (!insertOrModify) {
@@ -563,7 +575,7 @@ public class DrawTable extends View implements GraphicsOperations {
                 title = null;
                 break;
         }
-        editText = new EditText(context);
+        editText = getEditText();
         InfoBox infoBox = new InfoBox(title, "取消", "确定", editText) {
             @Override
             void onNegative() {
@@ -681,7 +693,7 @@ public class DrawTable extends View implements GraphicsOperations {
         post(new Runnable() {
             @Override
             public void run() {
-                final EditText editText = new EditText(context);
+                final EditText editText = getEditText();
                 terminal.infoBox[1] = new InfoBox("输入一个值：", "字符串", "整数", editText) {
                     @Override
                     void onNegative() {

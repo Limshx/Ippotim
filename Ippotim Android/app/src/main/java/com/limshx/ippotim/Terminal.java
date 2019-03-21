@@ -10,6 +10,7 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+
 import java.util.ArrayList;
 
 import android.webkit.WebView;
@@ -23,13 +24,12 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
     private float gap;
     private int linesCount;
     private float preX, preY;
-    private boolean readyForGo = true;
+    private boolean turningPage;
     private int index;
     private boolean hasOutput;
     private float baseX = 0;
     private float newestChange;
-    private boolean changedBaseX = false;
-    private boolean hasSoftWrap;
+    private boolean changedBaseX;
     private ArrayList<StringBuilder> list; // 把输出缓冲到rawList而不进行切分处理可以彻底解放内核，解决运行瓶颈。用ArrayList<StringBuilder>而不是ArrayList<String>会省去很多麻烦。
     private long preClickTime = 0;
     Adapter adapter;
@@ -121,7 +121,7 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
         performClick();
         switch (motionEvent.getAction()) {
             case MotionEvent.ACTION_UP: {
-                readyForGo = true;
+                turningPage = false;
                 if (changedBaseX) {
                     changedBaseX = false;
                     baseX += newestChange;
@@ -141,7 +141,7 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                 break;
             }
             case MotionEvent.ACTION_MOVE: {
-                if (!readyForGo) {
+                if (turningPage) {
                     return false;
                 }
 
@@ -153,7 +153,7 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
                     if (!changedBaseX) {
                         float y = motionEvent.getY();
                         if (fontSize * 5 < y - preY || y - preY < -fontSize * 5) {
-                            readyForGo = false;
+                            turningPage = true;
                             final int direction = y > preY ? -1 : 1;
                             index = index + direction * linesCount;
                             if (index - linesCount < 0) {
@@ -177,46 +177,14 @@ public class Terminal extends SurfaceView implements SurfaceHolder.Callback {
         linesCount = (int) (getHeight() / gap);
     }
 
-    private boolean hasEmoji(String s) {
-        // D83D是emoji的首个双字节，十进制是55357，避免或者说防止emoji被截断显示为两个乱码
-        // char是占两个字节，中文可以用两个字节表示，不怕变乱码，或者说想变乱码都难
-        return s.charAt(s.length() - 1) == 0xD83D;
-    }
-
     void getOutput(String s) {
         if (s.equals("\n")) {
-            // 如果刚因为缓存满了自动换行了又来了个换行符，则直接返回
-            if (hasSoftWrap) {
-                hasSoftWrap = false;
-                return;
-            }
             if (list.size() == Integer.MAX_VALUE) {
                 list.remove(0);
             }
             list.add(new StringBuilder());
         } else {
-            int cachedStringLength = list.get(list.size() - 1).length();
-            // s是单次output输出者，是人工一个个放上去的，一般不会太大，所以缓存大小设1000认为是比较合理的，真的很大那也没办法了，或许可以让用户自己定，不过应该也不会有人有这种需求，毕竟是教学语言。实际情况是1000是可以接受的，左右平移和TextView都不卡，那就先酱紫。
-            int maxCachedStringLength = 1000;
-            if (maxCachedStringLength <= cachedStringLength + s.length()) {
-                hasSoftWrap = true;
-                int freeSpace = maxCachedStringLength - cachedStringLength;
-                // 适配表情符号之双字节患者
-                if (hasEmoji(s.substring(0, freeSpace))) {
-                    freeSpace += 1;
-                }
-                list.get(list.size() - 1).append(s, 0, freeSpace);
-                list.add(new StringBuilder());
-                String remainingString = s.substring(freeSpace);
-                if (!remainingString.equals("")) {
-                    getOutput(remainingString);
-                }
-            } else {
-                if (hasSoftWrap) {
-                    hasSoftWrap = false;
-                }
-                list.get(list.size() - 1).append(s);
-            }
+            list.get(list.size() - 1).append(s);
         }
         hasOutput = true;
         // 被动式刷新得等绘制完才返回，有瓶颈，会很慢。
